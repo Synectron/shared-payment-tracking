@@ -133,9 +133,9 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>New spend</DialogTitle>
         <DialogDescription>
-          You paid, so you create the spend and you approve paybacks. Attach the
-          bill if you have it. Optionally let each member declare their own
-          share.
+          You paid, so you create the spend and approve paybacks. Choose equal
+          split, or let each member submit their own share for you (or the group
+          owner) to approve. Attach the bill if you have it.
         </DialogDescription>
       </DialogHeader>
 
@@ -145,7 +145,8 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           <span className="font-medium text-foreground">
             {currentUser?.name ?? "You"}
           </span>{" "}
-          (whoever creates the spend)
+          (whoever creates the spend). Friends pay you via the UPI ID or phone
+          on your People profile.
         </p>
 
         <div className="grid gap-2 rounded-lg border border-border p-3">
@@ -313,11 +314,22 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
         </div>
 
         {shareMode === "open" ? (
-          <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-            Selected members will each enter their own share. Amounts only count
-            for settlement after you or the group owner approve them.
+          <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground space-y-1">
+            <p>
+              Selected members each enter their own share. Amounts only count
+              for settlement after you or the group owner approve them.
+            </p>
+            <p>
+              After approval, they pay your UPI or phone (People), claim paid,
+              and you approve the payback.
+            </p>
           </div>
-        ) : null}
+        ) : (
+          <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
+            Equal split assigns amounts now. Friends pay your UPI or phone on
+            People, claim paid, and you approve.
+          </div>
+        )}
 
         {preview && (
           <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">

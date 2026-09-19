@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FlowTip } from "@/components/flow-tip";
 import { PersonAvatar } from "@/components/person-avatar";
 import { updatePaymentContact } from "@/lib/actions";
 import { balancesForPerson } from "@/lib/ledger";
@@ -111,9 +112,22 @@ export function PeopleView() {
       <div>
         <h1 className="font-heading text-3xl tracking-tight">People</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Share a link/code, or email a custom invite from contact@mail.opuskiln.com.
+          Invite friends, then add your UPI or phone so they know where to send
+          money when they owe you.
         </p>
       </div>
+
+      <FlowTip title="Paying someone back">
+        <p>
+          Settora tracks who owes what. Actual payment happens in your UPI app
+          (or bank transfer) using the person&apos;s UPI ID or phone below.
+        </p>
+        <p>
+          After you send the money, open the spend and tap Claim paid. The
+          person who created the spend has to approve before it counts as
+          settled.
+        </p>
+      </FlowTip>
 
       <Card>
         <CardContent className="space-y-3 pt-4">
@@ -151,7 +165,8 @@ export function PeopleView() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Sent via Resend from contact@mail.opuskiln.com (not Supabase mail).
+              Friend gets a join link for this group. Sent from
+              contact@mail.opuskiln.com.
             </p>
           </form>
 
@@ -167,8 +182,9 @@ export function PeopleView() {
           <div>
             <p className="text-sm font-medium">Your payment details</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              UPI ID and phone are visible to everyone in this group so they can
-              pay you back.
+              Everyone in this group can see these. When they owe you, they pay
+              your UPI ID or phone in their own app, then claim paid on the
+              spend for you to approve.
             </p>
           </div>
           <form onSubmit={onSavePaymentContact} className="space-y-3">
@@ -196,6 +212,10 @@ export function PeopleView() {
             <Button type="submit" size="sm" disabled={savingContact}>
               {savingContact ? "Saving…" : "Save payment details"}
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Tip: fill at least one field. Without it, friends have to ask you
+              how to pay.
+            </p>
             {contactStatus ? (
               <p className="text-sm text-primary">{contactStatus}</p>
             ) : null}
@@ -237,18 +257,25 @@ export function PeopleView() {
                         : cards.map((card) => card.name).join(" · ")}
                     </p>
                     {person.upiId || person.phone ? (
-                      <p className="mt-1 text-xs text-foreground/80">
-                        {person.upiId ? (
-                          <span className="font-mono">{person.upiId}</span>
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-xs text-foreground/80">
+                          {person.upiId ? (
+                            <span className="font-mono">{person.upiId}</span>
+                          ) : null}
+                          {person.upiId && person.phone ? " · " : null}
+                          {person.phone ? <span>{person.phone}</span> : null}
+                        </p>
+                        {person.id !== state.currentUserId ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            Pay this UPI or number when you owe them
+                          </p>
                         ) : null}
-                        {person.upiId && person.phone ? " · " : null}
-                        {person.phone ? <span>{person.phone}</span> : null}
-                      </p>
+                      </div>
                     ) : (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {person.id === state.currentUserId
                           ? "Add your UPI or phone above"
-                          : "No payment contact yet"}
+                          : "No payment contact yet · ask them to add one"}
                       </p>
                     )}
                     <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">

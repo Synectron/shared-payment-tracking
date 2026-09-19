@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FlowTip } from "@/components/flow-tip";
 import { PersonAvatar } from "@/components/person-avatar";
 import {
   isDueSoon,
@@ -173,10 +174,15 @@ export function ExpenseCard({
 
         {showDeclareForm && (
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-2">
+            <p className="text-xs font-medium text-foreground">
+              {myShare?.status === "amount_pending"
+                ? "Your share is waiting for approval"
+                : "Add your share"}
+            </p>
             <p className="text-xs text-muted-foreground">
               {myShare?.status === "amount_pending"
-                ? "Update your declared share (still awaiting approval):"
-                : "Enter your share of this bill:"}
+                ? "You can update the amount. The bill creator or group owner still has to approve before settlement starts."
+                : "Enter what you owe on this bill. After they approve, pay their UPI or phone (People), then Claim paid."}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Input
@@ -207,6 +213,28 @@ export function ExpenseCard({
             ) : null}
           </div>
         )}
+
+        {myShare &&
+        myShare.status === "unpaid" &&
+        myShare.personId !== expense.paidById ? (
+          <FlowTip>
+            <p>
+              Pay{" "}
+              <span className="font-medium text-foreground">
+                {payer?.name ?? "the creator"}
+              </span>{" "}
+              using their UPI ID or phone on People, then tap Claim paid. They
+              approve when the money arrives.
+            </p>
+            {payer?.upiId || payer?.phone ? (
+              <p className="font-mono text-foreground/90">
+                {[payer.upiId, payer.phone].filter(Boolean).join(" · ")}
+              </p>
+            ) : (
+              <p>They haven&apos;t added a payment contact yet. Ask them on People.</p>
+            )}
+          </FlowTip>
+        ) : null}
 
         <ul className="divide-y divide-border rounded-lg border">
           {expense.shares.map((share) => {

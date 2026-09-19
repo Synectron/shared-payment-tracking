@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { BalanceCards } from "@/components/balance-cards";
 import { ExpenseCard } from "@/components/expense-card";
+import { FlowTip } from "@/components/flow-tip";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { useDialogs } from "@/components/dialogs-provider";
 import { Button } from "@/components/ui/button";
@@ -26,14 +27,30 @@ export function HomeView() {
             Group spends
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Paid for the group? Log a spend (party, dinner, trip). You&apos;re
-            the receiver: friends claim paybacks, you approve.
+            Paid for the group? Log a spend. You&apos;re the receiver: friends
+            add shares or claim paybacks, you approve.
           </p>
         </div>
         <Button className="sm:hidden" onClick={openAddExpense}>
           New spend
         </Button>
       </div>
+
+      <FlowTip title="How Settora works">
+        <p>
+          1. Invite friends on People, and add your UPI ID or phone so they can
+          pay you.
+        </p>
+        <p>
+          2. Whoever paid logs a spend. Choose equal split, or let each member
+          submit their own share (you or the group owner approve those amounts).
+        </p>
+        <p>
+          3. To pay back: open People, copy their UPI or phone, send money in
+          your UPI app, then Claim paid on the spend. Nothing counts until the
+          creator approves.
+        </p>
+      </FlowTip>
 
       <RemindersPanel onMarkPaid={requestMarkPaid} />
       <BalanceCards onSettle={requestSettle} />
@@ -46,9 +63,16 @@ export function HomeView() {
           </Button>
         </div>
         {recent.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No spends yet. Create one after you pay for the group.
-          </p>
+          <div className="rounded-xl border border-dashed px-4 py-8 text-center space-y-2">
+            <p className="font-medium">No spends yet</p>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              After you pay for dinner or a trip, tap New spend. Friends join
+              from People, then settle against your UPI or phone.
+            </p>
+            <Button size="sm" onClick={openAddExpense}>
+              New spend
+            </Button>
+          </div>
         ) : (
           <div className="grid gap-3">
             {recent.map((expense) => (

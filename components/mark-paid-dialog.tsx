@@ -98,8 +98,8 @@ export function MarkPaidDialog({
           <DialogDescription>
             {debtor && share && expense ? (
               <>
-                {debtor.name} · {formatMoney(share.amountCents, state.currency)} for{" "}
-                {expense.title}
+                {debtor.name} · {formatMoney(share.amountCents, state.currency)}{" "}
+                for {expense.title}
                 {source ? ` on ${source.name}` : ""}, owed to {creditor?.name}.
                 {isPendingClaim
                   ? " Waiting for the receiver to approve."
@@ -110,6 +110,30 @@ export function MarkPaidDialog({
             )}
           </DialogDescription>
         </DialogHeader>
+
+        {!isPendingClaim && creditor ? (
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">
+              Pay {creditor.name} first
+            </p>
+            {creditor.upiId || creditor.phone ? (
+              <>
+                <p>
+                  Use their UPI ID or phone in your payment app, then submit the
+                  claim here.
+                </p>
+                <p className="font-mono text-sm text-foreground">
+                  {[creditor.upiId, creditor.phone].filter(Boolean).join(" · ")}
+                </p>
+              </>
+            ) : (
+              <p>
+                They haven&apos;t added a UPI ID or phone yet. Check People, or
+                ask them before you claim.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {!isPendingClaim ? (
           <div className="grid gap-1.5">
