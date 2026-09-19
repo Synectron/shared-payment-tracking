@@ -31,16 +31,8 @@ const NAV = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { ready, state, currentUser, setCurrentUserId, reminders } = useLedger();
+  const { state, currentUser, setCurrentUserId, reminders } = useLedger();
   const { openAddExpense } = useDialogs();
-
-  if (!ready) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Opening the household tab…
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-full flex-col">

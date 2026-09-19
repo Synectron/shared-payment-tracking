@@ -4,9 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
 } from "react";
 import {
   balancesForPerson,
@@ -64,66 +63,113 @@ type LedgerContextValue = {
 
 const LedgerContext = createContext<LedgerContextValue | null>(null);
 
+const listeners = new Set<() => void>();
+let memoryState: LedgerState | null = null;
+let cachedServerSnapshot: LedgerState | null = null;
+
 function newId(prefix: string): string {
-  return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isValidLedgerState(value: unknown): value is LedgerState {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as LedgerState;
+  return (
+    Array.isArray(candidate.people) &&
+    candidate.people.length > 0 &&
+    Array.isArray(candidate.sources) &&
+    Array.isArray(candidate.expenses) &&
+    typeof candidate.currentUserId === "string" &&
+    candidate.people.some((person) => person.id === candidate.currentUserId)
+  );
 }
 
 function loadState(): LedgerState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as LedgerState;
-    if (!parsed?.people?.length || !parsed.currentUserId) return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as unknown;
+    return isValidLedgerState(parsed) ? parsed : null;
   } catch {
     return null;
   }
 }
 
 function saveState(state: LedgerState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore quota / private-mode write failures.
+  }
+}
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+function getServerSnapshot(): LedgerState {
+  if (!cachedServerSnapshot) cachedServerSnapshot = createSeed();
+  return cachedServerSnapshot;
+}
+
+function getClientSnapshot(): LedgerState {
+  if (!memoryState) {
+    memoryState = loadState() ?? createSeed();
+  }
+  return memoryState;
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== STORAGE_KEY) return;
+    memoryState = loadState() ?? createSeed();
+    emit();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function setLedgerState(next: LedgerState | ((prev: LedgerState) => LedgerState)) {
+  const previous = getClientSnapshot();
+  memoryState = typeof next === "function" ? next(previous) : next;
+  saveState(memoryState);
+  emit();
 }
 
 export function LedgerProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<LedgerState>(createSeed);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    // localStorage is the source of truth after first paint (SSR stays on the seed).
-    const stored = loadState() ?? createSeed();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage
-    setState(stored);
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (ready) saveState(state);
-  }, [ready, state]);
-
-  const update = useCallback((recipe: (draft: LedgerState) => LedgerState) => {
-    setState((current) => recipe(current));
-  }, []);
+  const state = useSyncExternalStore(
+    subscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  );
 
   const setCurrentUserId = useCallback((id: string) => {
-    update((current) => ({ ...current, currentUserId: id }));
-  }, [update]);
+    setLedgerState((current) => ({ ...current, currentUserId: id }));
+  }, []);
 
   const addPerson = useCallback((person: Omit<Person, "id">) => {
-    update((current) => ({
+    setLedgerState((current) => ({
       ...current,
       people: [...current.people, { ...person, id: newId("p") }],
     }));
-  }, [update]);
+  }, []);
 
   const addSource = useCallback((source: Omit<PaymentSource, "id">) => {
-    update((current) => ({
+    setLedgerState((current) => ({
       ...current,
       sources: [...current.sources, { ...source, id: newId("s") }],
     }));
-  }, [update]);
+  }, []);
 
   const addExpense = useCallback((input: AddExpenseInput) => {
-    update((current) => {
+    setLedgerState((current) => {
       const splitWith = input.splitWith.filter(Boolean);
       if (splitWith.length === 0) return current;
       const base = Math.floor(input.amountCents / splitWith.length);
@@ -154,10 +200,10 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
       };
       return { ...current, expenses: [expense, ...current.expenses] };
     });
-  }, [update]);
+  }, []);
 
   const markPaid = useCallback((input: MarkPaidInput) => {
-    update((current) => ({
+    setLedgerState((current) => ({
       ...current,
       expenses: current.expenses.map((expense) => {
         if (expense.id !== input.expenseId) return expense;
@@ -176,10 +222,10 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
         };
       }),
     }));
-  }, [update]);
+  }, []);
 
   const markUnpaid = useCallback((expenseId: string, personId: string) => {
-    update((current) => ({
+    setLedgerState((current) => ({
       ...current,
       expenses: current.expenses.map((expense) => {
         if (expense.id !== expenseId) return expense;
@@ -198,11 +244,11 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
         };
       }),
     }));
-  }, [update]);
+  }, []);
 
   const settleWith = useCallback((otherId: string, repaidWith: RepayMethod) => {
     let count = 0;
-    update((current) => {
+    setLedgerState((current) => {
       const you = current.currentUserId;
       return {
         ...current,
@@ -238,16 +284,16 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
       };
     });
     return count;
-  }, [update]);
+  }, []);
 
   const resetDemo = useCallback(() => {
-    setState(createSeed());
+    setLedgerState(createSeed());
   }, []);
 
   const value = useMemo<LedgerContextValue>(() => {
     const currentUser = state.people.find((person) => person.id === state.currentUserId);
     return {
-      ready,
+      ready: true,
       state,
       currentUser,
       reminders: getReminders(state),
@@ -263,7 +309,6 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
       resetDemo,
     };
   }, [
-    ready,
     state,
     setCurrentUserId,
     addPerson,
