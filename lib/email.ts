@@ -2,6 +2,9 @@ import { Resend } from "resend";
 
 const FROM = process.env.EMAIL_FROM ?? "Settora <contact@mail.opuskiln.com>";
 
+/** Hosted logo for email clients (PNG; absolute production URL). */
+export const EMAIL_LOGO_URL = "https://settora.opuskiln.com/settora-logo.png";
+
 function getResend() {
   const key = process.env.RESEND_API_KEY;
   if (!key) return null;
@@ -34,15 +37,65 @@ export async function sendEmail(input: {
   return {};
 }
 
-export function magicLinkEmailHtml(link: string) {
+function emailShell(body: string) {
   return `
-    <div style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
-      <p>Here’s your one-time link to sign in to <strong>Settora</strong>:</p>
-      <p><a href="${link}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;">Sign in</a></p>
-      <p style="font-size:12px;color:#666;">Or paste this URL into your browser:<br/>${link}</p>
-      <p style="font-size:12px;color:#666;">Didn’t ask for this? Safe to ignore.</p>
-    </div>
-  `;
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /></head>
+<body style="margin:0;padding:0;background:#f4f6f5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f5;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;padding:32px 28px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5;color:#111;">
+          <tr>
+            <td align="center" style="padding-bottom:24px;">
+              <img src="${EMAIL_LOGO_URL}" alt="Settora" width="112" height="112" style="display:block;width:112px;height:112px;border:0;border-radius:22px;" />
+            </td>
+          </tr>
+          ${body}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+function ctaButton(href: string, label: string) {
+  return `
+<tr>
+  <td align="center" style="padding:8px 0 24px;">
+    <a href="${href}" style="display:inline-block;padding:14px 28px;background:#2d4a3e;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;">${label}</a>
+  </td>
+</tr>
+  `.trim();
+}
+
+export function magicLinkEmailHtml(link: string) {
+  return emailShell(`
+<tr>
+  <td style="padding-bottom:8px;font-size:16px;text-align:center;">
+    Sign in to <strong>Settora</strong> with the button below.
+  </td>
+</tr>
+${ctaButton(link, "Sign in to Settora")}
+<tr>
+  <td style="font-size:12px;color:#666;text-align:center;">
+    This link works once and expires soon. Didn’t ask for this? Safe to ignore.
+  </td>
+</tr>
+  `);
+}
+
+export function magicLinkEmailText() {
+  return [
+    "Sign in to Settora",
+    "",
+    "Open this message in an email app that shows HTML, then tap “Sign in to Settora”.",
+    "",
+    "Didn’t ask for this? Safe to ignore.",
+  ].join("\n");
 }
 
 export function groupInviteEmailHtml(input: {
@@ -51,11 +104,43 @@ export function groupInviteEmailHtml(input: {
   inviteCode: string;
   inviterName: string;
 }) {
-  return `
-    <div style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
-      <p><strong>${input.inviterName}</strong> wants you in <strong>${input.groupName}</strong> on Settora.</p>
-      <p><a href="${input.inviteLink}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;">Join group</a></p>
-      <p style="font-size:12px;color:#666;">Prefer a code? Use <code>${input.inviteCode}</code><br/>${input.inviteLink}</p>
-    </div>
-  `;
+  const safeName = escapeHtml(input.groupName);
+  const safeInviter = escapeHtml(input.inviterName);
+  const safeCode = escapeHtml(input.inviteCode);
+
+  return emailShell(`
+<tr>
+  <td style="padding-bottom:8px;font-size:16px;text-align:center;">
+    <strong>${safeInviter}</strong> wants you in <strong>${safeName}</strong> on Settora.
+  </td>
+</tr>
+${ctaButton(input.inviteLink, "Join group")}
+<tr>
+  <td style="font-size:12px;color:#666;text-align:center;">
+    Prefer a code? Use <code style="font-size:13px;letter-spacing:0.04em;">${safeCode}</code>
+  </td>
+</tr>
+  `);
+}
+
+export function groupInviteEmailText(input: {
+  groupName: string;
+  inviteCode: string;
+  inviterName: string;
+}) {
+  return [
+    `${input.inviterName} wants you in ${input.groupName} on Settora.`,
+    "",
+    "Open this message in an email app that shows HTML, then tap “Join group”.",
+    "",
+    `Prefer a code? Use ${input.inviteCode}`,
+  ].join("\n");
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

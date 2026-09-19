@@ -7,7 +7,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { RepayMethod, SourceKind } from "@/lib/types";
 import {
   groupInviteEmailHtml,
+  groupInviteEmailText,
   magicLinkEmailHtml,
+  magicLinkEmailText,
   sendEmail,
 } from "@/lib/email";
 import { DEFAULT_CURRENCY, isSupportedCurrency } from "@/lib/money";
@@ -82,7 +84,7 @@ export async function signInWithMagicLink(formData: FormData) {
         to: email,
         subject: "Sign in to Settora",
         html: magicLinkEmailHtml(signInLink),
-        text: `Here’s your one-time Settora sign-in link: ${signInLink}`,
+        text: magicLinkEmailText(),
       });
 
       if (mailed.error) return { error: mailed.error };
@@ -284,7 +286,11 @@ export async function sendGroupInviteEmail(groupId: string, email: string) {
       inviteCode: group.invite_code,
       inviterName,
     }),
-    text: `${inviterName} wants you in ${group.name} on Settora.\n\nJoin: ${inviteLink}\nCode: ${group.invite_code}`,
+    text: groupInviteEmailText({
+      groupName: group.name,
+      inviteCode: group.invite_code,
+      inviterName,
+    }),
   });
 
   if (mailed.error) return { error: mailed.error };
