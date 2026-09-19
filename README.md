@@ -1,12 +1,12 @@
 # Settora
 
-Shared card / UPI tracking for friends. Create a group, pick a **currency**, share an invite link/code or email a custom invite, log charges, claim repayments, and require the **receiver to approve** before anything counts as paid.
+Track shared card and UPI spend with friends. Make a group, pick a **currency**, send an invite link or email, log charges, claim repayments. Nothing counts as paid until the **receiver approves**.
 
 ## Stack
 
 - Next.js (App Router) on Vercel
 - Supabase Auth (magic link) + Postgres + RLS + Storage
-- Resend for outbound email from `contact@mail.opuskiln.com` (bypasses Supabase’s ~2 emails/hour free-tier limit)
+- Resend for outbound email from `contact@mail.opuskiln.com` (avoids Supabase’s ~2 emails/hour free-tier cap)
 
 ## Setup
 
@@ -49,12 +49,12 @@ Without those keys, sign-in falls back to Supabase’s built-in email (rate-limi
 
 ## Currency
 
-When creating a group, choose INR, USD, EUR, GBP, AED, SGD, AUD, or CAD. All amounts in that group format with that currency.
+When you create a group, pick INR, USD, EUR, GBP, AED, SGD, AUD, or CAD. Every amount in that group formats in that currency.
 
 ## How invites work
 
 - Each group has an **invite code** and link: `/join/<code>`
-- Share the link/code, or email a custom invite
+- Share the link or code, or email a custom invite
 - Members can copy the link or regenerate the code under People
 
 ## Spends (instances)

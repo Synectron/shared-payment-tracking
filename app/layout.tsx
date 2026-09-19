@@ -23,11 +23,11 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Settora — shared cards, UPI, and approved paybacks",
+    default: "Settora: shared cards, UPI, paybacks that need approval",
     template: "%s · Settora",
   },
   description:
-    "Create a group, share an invite link, log card or UPI charges, and require the receiver to approve repayments.",
+    "Make a group, share an invite, log card or UPI charges. Paybacks only count after the person owed approves.",
   applicationName: "Settora",
   authors: [{ name: "OpusKiln / Shubham Mishra" }],
   creator: "OpusKiln",
@@ -41,15 +41,15 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: siteUrl,
     siteName: "Settora",
-    title: "Settora — shared cards, UPI, and approved paybacks",
+    title: "Settora: shared cards, UPI, paybacks that need approval",
     description:
-      "Shared card and UPI groups with receiver-approved settlements. An OpusKiln product.",
+      "Friend groups for shared cards and UPI. Settlements wait on receiver approval. Built by OpusKiln.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Settora — shared cards, UPI, and approved paybacks",
+    title: "Settora: shared cards, UPI, paybacks that need approval",
     description:
-      "Shared card and UPI groups with receiver-approved settlements.",
+      "Friend groups for shared cards and UPI. Settlements wait on receiver approval.",
   },
   alternates: {
     canonical: siteUrl,

@@ -73,7 +73,7 @@ export async function signInWithMagicLink(formData: FormData) {
         to: email,
         subject: "Sign in to Settora",
         html: magicLinkEmailHtml(actionLink),
-        text: `Sign in to Settora: ${actionLink}`,
+        text: `Here’s your one-time Settora sign-in link: ${actionLink}`,
       });
 
       if (mailed.error) return { error: mailed.error };
@@ -189,7 +189,7 @@ export async function sendGroupInviteEmail(groupId: string, email: string) {
       inviteCode: group.invite_code,
       inviterName,
     }),
-    text: `${inviterName} invited you to join ${group.name} on Settora.\n\nJoin: ${inviteLink}\nCode: ${group.invite_code}`,
+    text: `${inviterName} wants you in ${group.name} on Settora.\n\nJoin: ${inviteLink}\nCode: ${group.invite_code}`,
   });
 
   if (mailed.error) return { error: mailed.error };

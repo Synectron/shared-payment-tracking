@@ -26,8 +26,8 @@ export function HomeView() {
             Group spends
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Create a spend when you pay (party, dinner, trip). You become the
-            receiver — friends claim paybacks, you approve.
+            Paid for the group? Log a spend (party, dinner, trip). You&apos;re
+            the receiver: friends claim paybacks, you approve.
           </p>
         </div>
         <Button className="sm:hidden" onClick={openAddExpense}>

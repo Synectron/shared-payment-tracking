@@ -130,8 +130,8 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>New spend</DialogTitle>
         <DialogDescription>
-          You paid — so you create this spend and you approve paybacks. Optionally
-          attach the bill.
+          You paid, so you create the spend and you approve paybacks. Attach the
+          bill if you have it.
         </DialogDescription>
       </DialogHeader>
 

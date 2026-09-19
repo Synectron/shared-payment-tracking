@@ -147,7 +147,7 @@ export function nudgeText(
   const creditor = personById(people, expense.paidById)?.name ?? "them";
   const source = sourceById(sources, expense.sourceId)?.name ?? "a shared card";
   const amount = `$${(share.amountCents / 100).toFixed(2)}`;
-  return `Hey ${debtor} — reminder that ${amount} for ${expense.title} is still unpaid. It went on ${source} and is owed to ${creditor}. Due ${expense.dueDate}.`;
+  return `Hey ${debtor}: ${amount} for ${expense.title} is still unpaid. It went on ${source} and is owed to ${creditor}. Due ${expense.dueDate}.`;
 }
 
 function pairKey(fromId: string, toId: string): string {

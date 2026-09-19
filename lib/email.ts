@@ -37,10 +37,10 @@ export async function sendEmail(input: {
 export function magicLinkEmailHtml(link: string) {
   return `
     <div style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
-      <p>Sign in to <strong>Settora</strong> with this one-time link:</p>
+      <p>Here’s your one-time link to sign in to <strong>Settora</strong>:</p>
       <p><a href="${link}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;">Sign in</a></p>
-      <p style="font-size:12px;color:#666;">Or paste this URL:<br/>${link}</p>
-      <p style="font-size:12px;color:#666;">If you did not request this, you can ignore the email.</p>
+      <p style="font-size:12px;color:#666;">Or paste this URL into your browser:<br/>${link}</p>
+      <p style="font-size:12px;color:#666;">Didn’t ask for this? Safe to ignore.</p>
     </div>
   `;
 }
@@ -53,9 +53,9 @@ export function groupInviteEmailHtml(input: {
 }) {
   return `
     <div style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
-      <p><strong>${input.inviterName}</strong> invited you to join <strong>${input.groupName}</strong> on Settora.</p>
+      <p><strong>${input.inviterName}</strong> wants you in <strong>${input.groupName}</strong> on Settora.</p>
       <p><a href="${input.inviteLink}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;">Join group</a></p>
-      <p style="font-size:12px;color:#666;">Or use invite code <code>${input.inviteCode}</code><br/>${input.inviteLink}</p>
+      <p style="font-size:12px;color:#666;">Prefer a code? Use <code>${input.inviteCode}</code><br/>${input.inviteLink}</p>
     </div>
   `;
 }

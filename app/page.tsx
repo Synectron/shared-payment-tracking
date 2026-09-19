@@ -18,7 +18,7 @@ export default async function HomePage() {
           <p className="text-sm font-medium text-primary">Settora</p>
           <h1 className="font-heading text-3xl tracking-tight">Your groups</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a group or join with a shared invite link / code.
+            Start a group, or paste an invite link or code to join one.
           </p>
         </div>
         <form action={signOut}>
@@ -46,7 +46,7 @@ export default async function HomePage() {
         </ul>
       ) : (
         <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          No groups yet. Create one or paste an invite code below.
+          No groups yet. Make one here, or paste an invite code below.
         </p>
       )}
 

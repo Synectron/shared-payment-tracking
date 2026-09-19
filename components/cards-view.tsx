@@ -25,7 +25,7 @@ export function CardsView() {
             Cards, UPI & bills
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Track which card or UPI got charged and what is still unpaid.
+            See which card or UPI took the hit, and what&apos;s still unpaid.
           </p>
         </div>
         <Button onClick={openAddSource}>Add source</Button>

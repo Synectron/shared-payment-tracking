@@ -34,13 +34,13 @@ export default function LoginPage() {
           <p className="text-sm font-medium text-primary">Settora</p>
           <h1 className="font-heading text-3xl tracking-tight">Sign in</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Magic link login — no password. We&apos;ll email you a one-time link.
+            No password. We email you a one-time sign-in link.
           </p>
         </div>
 
         {sent ? (
           <div className="rounded-xl border bg-muted/40 px-4 py-5 text-sm">
-            Check your email for the sign-in link. You can close this tab.
+            Check your inbox for the sign-in link. You can close this tab.
           </div>
         ) : (
           <form action={onSubmit} className="space-y-4">
