@@ -10,12 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RepayMethodSelect } from "@/components/repay-method-select";
 import { monthBalancesForPerson, personById } from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import { formatMonthLabel } from "@/lib/month";
-import type { RepayMethod } from "@/lib/types";
+
+const DEFAULT_REPAY_METHOD = "upi" as const;
 
 export type SettleTarget = {
   otherId: string;
@@ -31,7 +31,6 @@ export function SettleDialog({
   onClose: () => void;
 }) {
   const { state, settleWith } = useLedger();
-  const [method, setMethod] = useState<RepayMethod>("upi");
   const [message, setMessage] = useState("");
   const otherId = target?.otherId ?? null;
   const monthKey = target?.monthKey;
@@ -49,7 +48,7 @@ export function SettleDialog({
 
   async function confirm() {
     if (!otherId) return;
-    const count = await settleWith(otherId, method, monthKey);
+    const count = await settleWith(otherId, DEFAULT_REPAY_METHOD, monthKey);
     const scope = monthKey ? ` for ${formatMonthLabel(monthKey)}` : "";
     setMessage(
       count > 0
@@ -87,12 +86,6 @@ export function SettleDialog({
             ) : null}
           </DialogDescription>
         </DialogHeader>
-        <RepayMethodSelect
-          id="settle-repay-method"
-          label="How was it settled?"
-          value={method}
-          onChange={setMethod}
-        />
         {message ? (
           <p className="text-sm text-muted-foreground">{message}</p>
         ) : null}

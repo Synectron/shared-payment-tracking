@@ -10,11 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RepayMethodSelect } from "@/components/repay-method-select";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import { personById, sourceById } from "@/lib/ledger";
-import type { RepayMethod } from "@/lib/types";
+
+const DEFAULT_REPAY_METHOD = "upi" as const;
 
 export type PaidTarget = {
   expenseId: string;
@@ -30,7 +30,6 @@ export function MarkPaidDialog({
 }) {
   const { state, claimPaid, approveClaim, rejectClaim, currentUser } =
     useLedger();
-  const [method, setMethod] = useState<RepayMethod>("upi");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -46,7 +45,10 @@ export function MarkPaidDialog({
     if (!target) return;
     setPending(true);
     setError("");
-    const result = await claimPaid({ ...target, repaidWith: method });
+    const result = await claimPaid({
+      ...target,
+      repaidWith: DEFAULT_REPAY_METHOD,
+    });
     setPending(false);
     if (result) {
       setError(result);
@@ -126,15 +128,6 @@ export function MarkPaidDialog({
               </p>
             )}
           </div>
-        ) : null}
-
-        {!isPendingClaim ? (
-          <RepayMethodSelect
-            id="claim-repay-method"
-            label="How was it paid?"
-            value={method}
-            onChange={setMethod}
-          />
         ) : null}
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
