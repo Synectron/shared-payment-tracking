@@ -142,6 +142,7 @@ export async function loadGroupLedger(
       notes: e.notes ?? undefined,
       billPath,
       billUrl,
+      shareMode: (e.share_mode as Expense["shareMode"]) ?? "assigned",
       createdAt: String(e.created_at).slice(0, 10),
       shares: ((e.shares as Array<Record<string, unknown>>) ?? []).map((s) => ({
         id: s.id as string,

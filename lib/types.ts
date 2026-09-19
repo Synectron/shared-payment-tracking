@@ -8,7 +8,16 @@ export type RepayMethod =
   | "paid-the-card"
   | "other";
 
-export type ShareStatus = "unpaid" | "pending" | "paid";
+export type ShareStatus =
+  | "unpaid"
+  | "pending"
+  | "paid"
+  /** Open bill: member has not declared their amount yet */
+  | "open"
+  /** Member declared an amount; awaiting owner/creator approval before settlement */
+  | "amount_pending";
+
+export type ShareMode = "assigned" | "open";
 
 export type ClaimStatus = "pending" | "approved" | "rejected";
 
@@ -62,6 +71,8 @@ export type Expense = {
   notes?: string;
   billPath?: string;
   billUrl?: string;
+  /** assigned = equal split; open = members declare own shares for approval */
+  shareMode: ShareMode;
   shares: Share[];
   createdAt: string;
 };

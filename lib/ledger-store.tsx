@@ -14,9 +14,12 @@ import {
   addExpense as addExpenseAction,
   addPaymentSource as addSourceAction,
   approveClaim as approveClaimAction,
+  approveShareAmount as approveShareAmountAction,
   claimPayment as claimPaymentAction,
   claimSettleWith as claimSettleAction,
+  declareShareAmount as declareShareAmountAction,
   rejectClaim as rejectClaimAction,
+  rejectShareAmount as rejectShareAmountAction,
   regenerateInviteCode as regenerateInviteCodeAction,
   sendGroupInviteEmail as sendGroupInviteEmailAction,
   deleteGroup as deleteGroupAction,
@@ -31,6 +34,7 @@ import type {
   LedgerState,
   PaymentSource,
   RepayMethod,
+  ShareMode,
   SourceKind,
 } from "@/lib/types";
 
@@ -44,6 +48,7 @@ type AddExpenseInput = {
   notes?: string;
   splitWith: string[];
   billFile?: File | null;
+  shareMode?: ShareMode;
 };
 
 type ClaimPaidInput = {
@@ -66,6 +71,18 @@ type LedgerContextValue = {
   claimPaid: (input: ClaimPaidInput) => Promise<string | null>;
   approveClaim: (expenseId: string, personId: string) => Promise<string | null>;
   rejectClaim: (expenseId: string, personId: string) => Promise<string | null>;
+  declareShareAmount: (
+    expenseId: string,
+    amountCents: number
+  ) => Promise<string | null>;
+  approveShareAmount: (
+    expenseId: string,
+    personId: string
+  ) => Promise<string | null>;
+  rejectShareAmount: (
+    expenseId: string,
+    personId: string
+  ) => Promise<string | null>;
   settleWith: (otherId: string, method: RepayMethod) => Promise<number>;
   regenerateInviteCode: () => Promise<string | null>;
   sendInviteEmail: (email: string) => Promise<string | null>;
@@ -140,6 +157,7 @@ export function LedgerProvider({
         notes: input.notes,
         splitWith: input.splitWith,
         billPath,
+        shareMode: input.shareMode,
       });
       if (result?.error) return result.error;
       refresh();
@@ -178,6 +196,45 @@ export function LedgerProvider({
   const rejectClaim = useCallback(
     async (expenseId: string, personId: string) => {
       const result = await rejectClaimAction(state.groupId, {
+        expenseId,
+        personId,
+      });
+      if (result?.error) return result.error;
+      refresh();
+      return null;
+    },
+    [state.groupId, refresh]
+  );
+
+  const declareShareAmount = useCallback(
+    async (expenseId: string, amountCents: number) => {
+      const result = await declareShareAmountAction(state.groupId, {
+        expenseId,
+        amountCents,
+      });
+      if (result?.error) return result.error;
+      refresh();
+      return null;
+    },
+    [state.groupId, refresh]
+  );
+
+  const approveShareAmount = useCallback(
+    async (expenseId: string, personId: string) => {
+      const result = await approveShareAmountAction(state.groupId, {
+        expenseId,
+        personId,
+      });
+      if (result?.error) return result.error;
+      refresh();
+      return null;
+    },
+    [state.groupId, refresh]
+  );
+
+  const rejectShareAmount = useCallback(
+    async (expenseId: string, personId: string) => {
+      const result = await rejectShareAmountAction(state.groupId, {
         expenseId,
         personId,
       });
@@ -243,6 +300,9 @@ export function LedgerProvider({
       claimPaid,
       approveClaim,
       rejectClaim,
+      declareShareAmount,
+      approveShareAmount,
+      rejectShareAmount,
       settleWith,
       regenerateInviteCode,
       sendInviteEmail,
@@ -257,6 +317,9 @@ export function LedgerProvider({
     claimPaid,
     approveClaim,
     rejectClaim,
+    declareShareAmount,
+    approveShareAmount,
+    rejectShareAmount,
     settleWith,
     regenerateInviteCode,
     sendInviteEmail,

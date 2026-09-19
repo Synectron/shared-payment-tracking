@@ -61,6 +61,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   );
   const [notes, setNotes] = useState("");
   const [billFile, setBillFile] = useState<File | null>(null);
+  const [shareMode, setShareMode] = useState<"assigned" | "open">("assigned");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -68,6 +69,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   const isUtility = selectedSource?.kind === "utility";
 
   const preview = useMemo(() => {
+    if (shareMode === "open") return null;
     const cents = parseMoneyToCents(amount);
     if (!cents || splitWith.length === 0) return null;
     const parts = splitEvenly(cents, splitWith.length);
@@ -75,7 +77,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       person: state.people.find((p) => p.id === id),
       amountCents: parts[index],
     }));
-  }, [amount, splitWith, state.people]);
+  }, [amount, splitWith, state.people, shareMode]);
 
   function toggleSplit(id: string) {
     if (id === state.currentUserId) return;
@@ -116,6 +118,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       notes,
       splitWith,
       billFile,
+      shareMode,
     });
     setSaving(false);
     if (err) {
@@ -131,7 +134,8 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
         <DialogTitle>New spend</DialogTitle>
         <DialogDescription>
           You paid, so you create the spend and you approve paybacks. Attach the
-          bill if you have it.
+          bill if you have it. Optionally let each member declare their own
+          share.
         </DialogDescription>
       </DialogHeader>
 
@@ -143,6 +147,42 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           </span>{" "}
           (whoever creates the spend)
         </p>
+
+        <div className="grid gap-2 rounded-lg border border-border p-3">
+          <Label>How should shares work?</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setShareMode("assigned")}
+              className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                shareMode === "assigned"
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : "border-border text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <span className="font-medium text-foreground">Equal split</span>
+              <span className="mt-0.5 block text-xs">
+                Assign everyone&apos;s share now
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShareMode("open")}
+              className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                shareMode === "open"
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : "border-border text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <span className="font-medium text-foreground">
+                Members add shares
+              </span>
+              <span className="mt-0.5 block text-xs">
+                Each person declares their amount; you or the group owner approve
+              </span>
+            </button>
+          </div>
+        </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor="title">What was it?</Label>
@@ -246,7 +286,9 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="grid gap-2">
-          <Label>Split with</Label>
+          <Label>
+            {shareMode === "open" ? "Who is on this bill?" : "Split with"}
+          </Label>
           <div className="grid gap-2">
             {state.people.map((person) => (
               <label
@@ -269,6 +311,13 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+
+        {shareMode === "open" ? (
+          <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
+            Selected members will each enter their own share. Amounts only count
+            for settlement after you or the group owner approve them.
+          </div>
+        ) : null}
 
         {preview && (
           <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">

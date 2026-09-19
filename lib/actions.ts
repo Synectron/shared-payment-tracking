@@ -328,11 +328,14 @@ export async function addExpense(
     notes?: string;
     splitWith: string[];
     billPath?: string;
+    /** assigned = equal split now; open = members declare amounts later */
+    shareMode?: "assigned" | "open";
   }
 ) {
   const { supabase, user } = await requireUser();
   // Creator of the spend is always the receiver / approver
   const paidById = user.id;
+  const shareMode = input.shareMode === "open" ? "open" : "assigned";
   let splitWith = input.splitWith.filter(Boolean);
   if (!splitWith.includes(paidById)) {
     splitWith = [...splitWith, paidById];
@@ -354,29 +357,228 @@ export async function addExpense(
       charged_to_source_id: input.chargedToSourceId ?? null,
       notes: input.notes?.trim() || null,
       bill_path: input.billPath ?? null,
+      share_mode: shareMode,
     })
     .select("id")
     .single();
 
   if (error || !expense) return { error: error?.message ?? "Failed to save." };
 
-  const base = Math.floor(input.amountCents / splitWith.length);
-  const remainder = input.amountCents % splitWith.length;
-  const shares = splitWith.map((personId, index) => {
-    const isPayer = personId === paidById;
-    return {
-      expense_id: expense.id,
-      person_id: personId,
-      amount_cents: base + (index < remainder ? 1 : 0),
-      status: isPayer ? "paid" : "unpaid",
-      paid_at: isPayer ? input.date : null,
-      repaid_with: isPayer ? "paid-the-card" : null,
-    };
-  });
+  let shares: Array<Record<string, unknown>>;
+
+  if (shareMode === "open") {
+    // Placeholders: members (and creator) declare their own amounts later.
+    // Creator can optionally mark their personal share as paid when declared+approved.
+    shares = splitWith.map((personId) => {
+      const isPayer = personId === paidById;
+      return {
+        expense_id: expense.id,
+        person_id: personId,
+        amount_cents: 0,
+        status: isPayer ? "paid" : "open",
+        paid_at: isPayer ? input.date : null,
+        repaid_with: isPayer ? "paid-the-card" : null,
+      };
+    });
+  } else {
+    const base = Math.floor(input.amountCents / splitWith.length);
+    const remainder = input.amountCents % splitWith.length;
+    shares = splitWith.map((personId, index) => {
+      const isPayer = personId === paidById;
+      return {
+        expense_id: expense.id,
+        person_id: personId,
+        amount_cents: base + (index < remainder ? 1 : 0),
+        status: isPayer ? "paid" : "unpaid",
+        paid_at: isPayer ? input.date : null,
+        repaid_with: isPayer ? "paid-the-card" : null,
+      };
+    });
+  }
 
   const { error: shareError } = await supabase.from("shares").insert(shares);
   if (shareError) return { error: shareError.message };
 
+  revalidatePath(`/g/${groupId}`);
+  return { ok: true as const };
+}
+
+/** Member declares their own share amount on an open bill (awaits approval). */
+export async function declareShareAmount(
+  groupId: string,
+  input: { expenseId: string; amountCents: number }
+) {
+  const { supabase, user } = await requireUser();
+
+  if (!input.amountCents || input.amountCents <= 0) {
+    return { error: "Enter a positive share amount." };
+  }
+
+  const { data: expense } = await supabase
+    .from("expenses")
+    .select("id, group_id, share_mode, amount_cents, paid_by_id")
+    .eq("id", input.expenseId)
+    .eq("group_id", groupId)
+    .maybeSingle();
+
+  if (!expense) return { error: "Expense not found." };
+  if (expense.share_mode !== "open") {
+    return { error: "This spend uses a fixed split." };
+  }
+  if (expense.paid_by_id === user.id) {
+    return { error: "Creator share is already covered." };
+  }
+  if (input.amountCents > expense.amount_cents) {
+    return { error: "Share cannot exceed the bill total." };
+  }
+
+  const { data: share } = await supabase
+    .from("shares")
+    .select("id, status")
+    .eq("expense_id", input.expenseId)
+    .eq("person_id", user.id)
+    .maybeSingle();
+
+  if (!share) return { error: "You are not on this bill." };
+  if (share.status === "paid" || share.status === "pending") {
+    return { error: "This share is already in payment flow." };
+  }
+  if (share.status !== "open" && share.status !== "amount_pending") {
+    return { error: "Share amount is already set." };
+  }
+
+  const { error } = await supabase
+    .from("shares")
+    .update({
+      amount_cents: input.amountCents,
+      status: "amount_pending",
+    })
+    .eq("id", share.id);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/g/${groupId}`);
+  return { ok: true as const };
+}
+
+/** Group owner or bill creator approves a self-declared share amount. */
+export async function approveShareAmount(
+  groupId: string,
+  input: { expenseId: string; personId: string }
+) {
+  const { supabase, user } = await requireUser();
+
+  const { data: expense } = await supabase
+    .from("expenses")
+    .select("id, paid_by_id, share_mode, group_id")
+    .eq("id", input.expenseId)
+    .eq("group_id", groupId)
+    .maybeSingle();
+
+  if (!expense) return { error: "Expense not found." };
+  if (expense.share_mode !== "open") {
+    return { error: "This spend uses a fixed split." };
+  }
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("created_by")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const isOwner =
+    group?.created_by === user.id || membership?.role === "owner";
+  const isBillCreator = expense.paid_by_id === user.id;
+  if (!isOwner && !isBillCreator) {
+    return { error: "Only the group owner or bill creator can approve shares." };
+  }
+
+  const { data: share } = await supabase
+    .from("shares")
+    .select("id, status, amount_cents")
+    .eq("expense_id", input.expenseId)
+    .eq("person_id", input.personId)
+    .maybeSingle();
+
+  if (!share || share.status !== "amount_pending") {
+    return { error: "No pending share amount to approve." };
+  }
+  if (!share.amount_cents || share.amount_cents <= 0) {
+    return { error: "Share amount is missing." };
+  }
+
+  const { error } = await supabase
+    .from("shares")
+    .update({ status: "unpaid" })
+    .eq("id", share.id);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/g/${groupId}`);
+  return { ok: true as const };
+}
+
+/** Reject a self-declared share; member can declare again. */
+export async function rejectShareAmount(
+  groupId: string,
+  input: { expenseId: string; personId: string }
+) {
+  const { supabase, user } = await requireUser();
+
+  const { data: expense } = await supabase
+    .from("expenses")
+    .select("id, paid_by_id, share_mode")
+    .eq("id", input.expenseId)
+    .eq("group_id", groupId)
+    .maybeSingle();
+
+  if (!expense) return { error: "Expense not found." };
+  if (expense.share_mode !== "open") {
+    return { error: "This spend uses a fixed split." };
+  }
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("created_by")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const isOwner =
+    group?.created_by === user.id || membership?.role === "owner";
+  const isBillCreator = expense.paid_by_id === user.id;
+  if (!isOwner && !isBillCreator) {
+    return { error: "Only the group owner or bill creator can reject shares." };
+  }
+
+  const { data: share } = await supabase
+    .from("shares")
+    .select("id, status")
+    .eq("expense_id", input.expenseId)
+    .eq("person_id", input.personId)
+    .maybeSingle();
+
+  if (!share || share.status !== "amount_pending") {
+    return { error: "No pending share amount to reject." };
+  }
+
+  const { error } = await supabase
+    .from("shares")
+    .update({ amount_cents: 0, status: "open" })
+    .eq("id", share.id);
+
+  if (error) return { error: error.message };
   revalidatePath(`/g/${groupId}`);
   return { ok: true as const };
 }
@@ -396,6 +598,9 @@ export async function claimPayment(
 
   if (shareError || !share) return { error: "Share not found." };
   if (share.status === "paid") return { error: "Already marked paid." };
+  if (share.status === "open" || share.status === "amount_pending") {
+    return { error: "Share amount must be approved before claiming payment." };
+  }
   if (share.status === "pending") {
     return { error: "A payment claim is already waiting for approval." };
   }

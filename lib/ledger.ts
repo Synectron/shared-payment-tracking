@@ -38,8 +38,19 @@ export function sourceById(
 export function unpaidShares(expense: Expense): Share[] {
   return expense.shares.filter(
     (share) =>
+      // Only final unpaid / payment-pending amounts count toward settlement.
+      // open + amount_pending are pre-approval and excluded.
       (share.status === "unpaid" || share.status === "pending") &&
-      share.personId !== expense.paidById
+      share.personId !== expense.paidById &&
+      share.amountCents > 0
+  );
+}
+
+export function isShareFinalForSettlement(share: Share): boolean {
+  return (
+    share.status === "unpaid" ||
+    share.status === "pending" ||
+    share.status === "paid"
   );
 }
 

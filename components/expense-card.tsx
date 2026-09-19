@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { CheckIcon, CopyIcon, CreditCardIcon, PaperclipIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PersonAvatar } from "@/components/person-avatar";
 import {
   isDueSoon,
@@ -12,7 +14,7 @@ import {
   personById,
   sourceById,
 } from "@/lib/ledger";
-import { formatDisplayDate, formatMoney, relativeDueLabel } from "@/lib/money";
+import { formatDisplayDate, formatMoney, parseMoneyToCents, relativeDueLabel } from "@/lib/money";
 import { REPAY_LABELS, type Expense, type Person, type PaymentSource } from "@/lib/types";
 import type { PaidTarget } from "@/components/mark-paid-dialog";
 import { useLedger } from "@/lib/ledger-store";
@@ -28,7 +30,15 @@ export function ExpenseCard({
   sources: PaymentSource[];
   onMarkPaid: (target: PaidTarget) => void;
 }) {
-  const { currentUser, approveClaim, rejectClaim, state } = useLedger();
+  const {
+    currentUser,
+    approveClaim,
+    rejectClaim,
+    declareShareAmount,
+    approveShareAmount,
+    rejectShareAmount,
+    state,
+  } = useLedger();
   const source = sourceById(sources, expense.sourceId);
   const charged = expense.chargedToSourceId
     ? sourceById(sources, expense.chargedToSourceId)
@@ -37,6 +47,15 @@ export function ExpenseCard({
   const overdue = isOverdue(expense);
   const dueSoon = isDueSoon(expense);
   const isReceiver = currentUser?.id === expense.paidById;
+  const canApproveShares =
+    isReceiver ||
+    state.currentUserRole === "owner" ||
+    state.createdBy === state.currentUserId;
+  const isOpenBill = expense.shareMode === "open";
+
+  const [declareAmount, setDeclareAmount] = useState("");
+  const [declareError, setDeclareError] = useState("");
+  const [declareSaving, setDeclareSaving] = useState(false);
 
   async function copyNudge(personId: string) {
     const share = expense.shares.find((item) => item.personId === personId);
@@ -44,6 +63,32 @@ export function ExpenseCard({
     const text = nudgeText(expense, share, people, sources);
     await navigator.clipboard.writeText(text);
   }
+
+  async function submitMyShare() {
+    const cents = parseMoneyToCents(declareAmount);
+    if (!cents) {
+      setDeclareError("Enter your share amount.");
+      return;
+    }
+    setDeclareSaving(true);
+    setDeclareError("");
+    const err = await declareShareAmount(expense.id, cents);
+    setDeclareSaving(false);
+    if (err) {
+      setDeclareError(err);
+      return;
+    }
+    setDeclareAmount("");
+  }
+
+  const myShare = expense.shares.find(
+    (s) => s.personId === state.currentUserId
+  );
+  const showDeclareForm =
+    isOpenBill &&
+    myShare &&
+    (myShare.status === "open" || myShare.status === "amount_pending") &&
+    myShare.personId !== expense.paidById;
 
   return (
     <Card>
@@ -65,13 +110,22 @@ export function ExpenseCard({
               <Badge variant="destructive">Overdue</Badge>
             ) : dueSoon ? (
               <Badge variant="outline">Due soon</Badge>
+            ) : isOpenBill &&
+              expense.shares.some(
+                (s) => s.status === "open" || s.status === "amount_pending"
+              ) ? (
+              <Badge variant="outline">Shares open</Badge>
             ) : (
               <Badge variant="secondary">
                 {expense.shares.every(
                   (share) =>
-                    share.status === "paid" || share.personId === expense.paidById
+                    share.status === "paid" ||
+                    share.personId === expense.paidById ||
+                    share.status === "open"
                 )
-                  ? "Settled"
+                  ? expense.shares.some((s) => s.status === "open")
+                    ? "Awaiting shares"
+                    : "Settled"
                   : "Open"}
               </Badge>
             )}
@@ -88,6 +142,11 @@ export function ExpenseCard({
           {payer && (
             <span className="rounded-full bg-muted px-2 py-1">
               {payer.name} created · approves paybacks
+            </span>
+          )}
+          {isOpenBill && (
+            <span className="rounded-full bg-muted px-2 py-1">
+              Members declare shares
             </span>
           )}
           {charged && (
@@ -112,6 +171,43 @@ export function ExpenseCard({
           <p className="text-sm text-muted-foreground">{expense.notes}</p>
         )}
 
+        {showDeclareForm && (
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {myShare?.status === "amount_pending"
+                ? "Update your declared share (still awaiting approval):"
+                : "Enter your share of this bill:"}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                className="max-w-[140px]"
+                inputMode="decimal"
+                value={declareAmount}
+                onChange={(e) => setDeclareAmount(e.target.value)}
+                placeholder={
+                  myShare?.amountCents
+                    ? String(myShare.amountCents / 100)
+                    : "0"
+                }
+              />
+              <Button
+                size="sm"
+                onClick={submitMyShare}
+                disabled={declareSaving}
+              >
+                {declareSaving
+                  ? "Saving…"
+                  : myShare?.status === "amount_pending"
+                    ? "Update share"
+                    : "Submit share"}
+              </Button>
+            </div>
+            {declareError ? (
+              <p className="text-xs text-destructive">{declareError}</p>
+            ) : null}
+          </div>
+        )}
+
         <ul className="divide-y divide-border rounded-lg border">
           {expense.shares.map((share) => {
             const person = personById(people, share.personId);
@@ -129,12 +225,16 @@ export function ExpenseCard({
                       {isPayer ? " · covered (creator)" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground tabular-nums">
-                      {formatMoney(share.amountCents, state.currency)}
+                      {share.status === "open"
+                        ? "No share yet"
+                        : formatMoney(share.amountCents, state.currency)}
                       {share.status === "paid" && share.repaidWith
                         ? ` · ${REPAY_LABELS[share.repaidWith]}`
                         : share.status === "pending"
-                          ? " · awaiting approval"
-                          : ""}
+                          ? " · awaiting payment approval"
+                          : share.status === "amount_pending"
+                            ? " · awaiting share approval"
+                            : ""}
                     </p>
                   </div>
                 </div>
@@ -144,6 +244,32 @@ export function ExpenseCard({
                       <CheckIcon />
                       Paid
                     </Badge>
+                  ) : share.status === "open" ? (
+                    <Badge variant="outline">Awaiting share</Badge>
+                  ) : share.status === "amount_pending" ? (
+                    canApproveShares ? (
+                      <>
+                        <Button
+                          size="xs"
+                          onClick={() =>
+                            approveShareAmount(expense.id, share.personId)
+                          }
+                        >
+                          Approve share
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() =>
+                            rejectShareAmount(expense.id, share.personId)
+                          }
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <Badge variant="outline">Share pending</Badge>
+                    )
                   ) : share.status === "pending" ? (
                     isReceiver ? (
                       <>
