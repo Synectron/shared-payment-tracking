@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Settora",
     short_name: "Settora",
     description:
@@ -12,7 +13,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     background_color: "#f4f0e6",
     theme_color: "#1f5c4d",
+    lang: "en",
     categories: ["finance", "productivity"],
+    prefer_related_applications: false,
     icons: [
       {
         src: "/icons/icon-192.png",

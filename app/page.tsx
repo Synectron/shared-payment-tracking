@@ -5,6 +5,7 @@ import { listMyGroups } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from "@/lib/money";
 
@@ -28,6 +29,8 @@ export default async function HomePage() {
           </Button>
         </form>
       </div>
+
+      <PwaInstallButton />
 
       {groups.length > 0 ? (
         <ul className="space-y-2">

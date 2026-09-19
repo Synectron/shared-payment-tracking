@@ -6,6 +6,7 @@ import { signInWithMagicLink } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function LoginPage() {
@@ -39,6 +40,8 @@ export default function LoginPage() {
               No password. We email you a one-time sign-in link.
             </p>
           </div>
+
+          <PwaInstallButton />
 
           {sent ? (
             <div className="rounded-xl border bg-muted/40 px-4 py-5 text-sm">

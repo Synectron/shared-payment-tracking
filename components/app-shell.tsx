@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDialogs } from "@/components/dialogs-provider";
+import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
 import { useLedger } from "@/lib/ledger-store";
 import { cn } from "@/lib/utils";
@@ -114,12 +115,19 @@ export function AppShell({
             </Link>
           </p>
         )}
-        <p className="mb-4 text-xs text-muted-foreground">
-          {state.groupName}
-          {currentUser ? ` · signed in as ${currentUser.name}` : ""}
-        </p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {state.groupName}
+            {currentUser ? ` · signed in as ${currentUser.name}` : ""}
+          </p>
+          <PwaInstallButton className="hidden sm:block" />
+        </div>
         {children}
       </main>
+
+      <div className="mx-auto w-full max-w-5xl px-4 pb-2 sm:hidden">
+        <PwaInstallButton />
+      </div>
 
       <SiteFooter className="pb-20 md:pb-0" />
 

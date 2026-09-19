@@ -1,5 +1,6 @@
-/* Settora installable PWA service worker — app-shell cache, network-first navigations. */
-const CACHE = "settora-shell-v1";
+/* Settora installable PWA service worker — app-shell cache, network-first navigations.
+ * Chrome requires a fetch handler for installability; keep this listener even if caching is minimal. */
+const CACHE = "settora-shell-v2";
 const PRECACHE = ["/", "/icons/icon-192.png", "/icons/icon-512.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

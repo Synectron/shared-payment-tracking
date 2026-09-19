@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
-import { PwaRegister } from "@/components/pwa-register";
+import { PwaProvider } from "@/components/pwa";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -90,8 +90,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <PwaRegister />
+        <PwaProvider>{children}</PwaProvider>
       </body>
     </html>
   );
