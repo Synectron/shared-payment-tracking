@@ -172,7 +172,7 @@ export function PwaInstallButton({ className }: { className?: string }) {
       {chromeHint && !canInstall ? (
         <p className="text-xs text-muted-foreground">
           Chrome hasn&apos;t offered install yet. Look for the install icon in
-          the address bar, or refresh after browsing Settora a bit — then try
+          the address bar, or refresh after browsing Settora a bit, then try
           again.
         </p>
       ) : null}

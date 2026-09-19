@@ -24,9 +24,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useLedger } from "@/lib/ledger-store";
-import { isoDate, parseMoneyToCents, splitEvenly, formatMoney } from "@/lib/money";
+import {
+  isoDate,
+  parseMoneyToCents,
+  splitEvenly,
+  formatMoney,
+} from "@/lib/money";
 import { sourceById } from "@/lib/ledger";
 import { PersonAvatar } from "@/components/person-avatar";
+import { currentMonthKey, monthRange } from "@/lib/month";
 
 export function AddExpenseDialog({
   open,
@@ -44,14 +50,18 @@ export function AddExpenseDialog({
 
 function AddExpenseForm({ onClose }: { onClose: () => void }) {
   const { state, addExpense, currentUser } = useLedger();
+  const isMonthlyTab = state.trackingMode === "monthly_tab";
   const cards = state.sources.filter((source) => source.kind === "card");
   const upis = state.sources.filter((source) => source.kind === "upi");
   const utilities = state.sources.filter((source) => source.kind === "utility");
+  const monthEnd = monthRange(currentMonthKey()).end;
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(isoDate(0));
-  const [dueDate, setDueDate] = useState(isoDate(7));
+  const [dueDate, setDueDate] = useState(
+    isMonthlyTab ? monthEnd : isoDate(7)
+  );
   const [sourceId, setSourceId] = useState(cards[0]?.id ?? upis[0]?.id ?? "");
   const [chargedToSourceId, setChargedToSourceId] = useState(
     cards[0]?.id ?? upis[0]?.id ?? ""
@@ -67,17 +77,21 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
 
   const selectedSource = sourceById(state.sources, sourceId);
   const isUtility = selectedSource?.kind === "utility";
+  const effectiveShareMode = isMonthlyTab ? "assigned" : shareMode;
+  const effectiveSplitWith = isMonthlyTab
+    ? state.people.map((p) => p.id)
+    : splitWith;
 
   const preview = useMemo(() => {
-    if (shareMode === "open") return null;
+    if (effectiveShareMode === "open") return null;
     const cents = parseMoneyToCents(amount);
-    if (!cents || splitWith.length === 0) return null;
-    const parts = splitEvenly(cents, splitWith.length);
-    return splitWith.map((id, index) => ({
+    if (!cents || effectiveSplitWith.length === 0) return null;
+    const parts = splitEvenly(cents, effectiveSplitWith.length);
+    return effectiveSplitWith.map((id, index) => ({
       person: state.people.find((p) => p.id === id),
       amountCents: parts[index],
     }));
-  }, [amount, splitWith, state.people, shareMode]);
+  }, [amount, effectiveSplitWith, state.people, effectiveShareMode]);
 
   function toggleSplit(id: string) {
     if (id === state.currentUserId) return;
@@ -91,7 +105,11 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   async function submit() {
     const amountCents = parseMoneyToCents(amount);
     if (!title.trim()) {
-      setError("Name this spend (e.g. Saturday party).");
+      setError(
+        isMonthlyTab
+          ? "Name this spend (e.g. groceries, dinner)."
+          : "Name this spend (e.g. Saturday party)."
+      );
       return;
     }
     if (!amountCents) {
@@ -102,7 +120,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       setError("Pick how you paid (card / UPI / utility).");
       return;
     }
-    if (splitWith.length === 0) {
+    if (effectiveSplitWith.length === 0) {
       setError("Include at least yourself in the split.");
       return;
     }
@@ -112,13 +130,13 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       title,
       amountCents,
       date,
-      dueDate,
+      dueDate: isMonthlyTab ? monthEnd : dueDate,
       sourceId,
       chargedToSourceId: isUtility ? chargedToSourceId || undefined : undefined,
       notes,
-      splitWith,
+      splitWith: effectiveSplitWith,
       billFile,
-      shareMode,
+      shareMode: effectiveShareMode,
     });
     setSaving(false);
     if (err) {
@@ -131,11 +149,11 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   return (
     <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>New spend</DialogTitle>
+        <DialogTitle>{isMonthlyTab ? "Add spend" : "New spend"}</DialogTitle>
         <DialogDescription>
-          You paid, so you create the spend and approve paybacks. Choose equal
-          split, or let each member submit their own share for you (or the group
-          owner) to approve. Attach the bill if you have it.
+          {isMonthlyTab
+            ? "You paid, so log it on this month’s tab. Equal split across members is automatic. Clear the tab before month end."
+            : "You paid, so you create the spend and approve paybacks. Choose equal split, or let each member submit their own share for you (or the group owner) to approve. Attach the bill if you have it."}
         </DialogDescription>
       </DialogHeader>
 
@@ -149,41 +167,49 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           on your People profile.
         </p>
 
-        <div className="grid gap-2 rounded-lg border border-border p-3">
-          <Label>How should shares work?</Label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setShareMode("assigned")}
-              className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                shareMode === "assigned"
-                  ? "border-primary bg-primary/5 text-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              <span className="font-medium text-foreground">Equal split</span>
-              <span className="mt-0.5 block text-xs">
-                Assign everyone&apos;s share now
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShareMode("open")}
-              className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                shareMode === "open"
-                  ? "border-primary bg-primary/5 text-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              <span className="font-medium text-foreground">
-                Members add shares
-              </span>
-              <span className="mt-0.5 block text-xs">
-                Each person declares their amount; you or the group owner approve
-              </span>
-            </button>
+        {!isMonthlyTab ? (
+          <div className="grid gap-2 rounded-lg border border-border p-3">
+            <Label>How should shares work?</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setShareMode("assigned")}
+                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                  shareMode === "assigned"
+                    ? "border-primary bg-primary/5 text-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <span className="font-medium text-foreground">Equal split</span>
+                <span className="mt-0.5 block text-xs">
+                  Assign everyone&apos;s share now
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareMode("open")}
+                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                  shareMode === "open"
+                    ? "border-primary bg-primary/5 text-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <span className="font-medium text-foreground">
+                  Members add shares
+                </span>
+                <span className="mt-0.5 block text-xs">
+                  Each person declares their amount; you or the group owner
+                  approve
+                </span>
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
+            Monthly tab: everyone in the group shares equally. No need to pick
+            share mode or declare amounts per person.
+          </p>
+        )}
 
         <div className="grid gap-1.5">
           <Label htmlFor="title">What was it?</Label>
@@ -276,44 +302,56 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="due">Pay-back due</Label>
-          <Input
-            id="due"
-            type="date"
-            value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)}
-          />
-        </div>
-
-        <div className="grid gap-2">
-          <Label>
-            {shareMode === "open" ? "Who is on this bill?" : "Split with"}
-          </Label>
-          <div className="grid gap-2">
-            {state.people.map((person) => (
-              <label
-                key={person.id}
-                className="flex items-center justify-between rounded-lg border border-border px-2.5 py-2"
-              >
-                <span className="flex items-center gap-2">
-                  <PersonAvatar person={person} size="sm" />
-                  <span>
-                    {person.name}
-                    {person.id === state.currentUserId ? " · you" : ""}
-                  </span>
-                </span>
-                <Checkbox
-                  checked={splitWith.includes(person.id)}
-                  disabled={person.id === state.currentUserId}
-                  onCheckedChange={() => toggleSplit(person.id)}
-                />
-              </label>
-            ))}
+        {!isMonthlyTab ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor="due">Pay-back due</Label>
+            <Input
+              id="due"
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+            />
           </div>
-        </div>
+        ) : null}
 
-        {shareMode === "open" ? (
+        {!isMonthlyTab ? (
+          <div className="grid gap-2">
+            <Label>
+              {shareMode === "open" ? "Who is on this bill?" : "Split with"}
+            </Label>
+            <div className="grid gap-2">
+              {state.people.map((person) => (
+                <label
+                  key={person.id}
+                  className="flex items-center justify-between rounded-lg border border-border px-2.5 py-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <PersonAvatar person={person} size="sm" />
+                    <span>
+                      {person.name}
+                      {person.id === state.currentUserId ? " · you" : ""}
+                    </span>
+                  </span>
+                  <Checkbox
+                    checked={splitWith.includes(person.id)}
+                    disabled={person.id === state.currentUserId}
+                    onCheckedChange={() => toggleSplit(person.id)}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {isMonthlyTab ? (
+          <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
+            Equal split across{" "}
+            {state.people.length === 1
+              ? "you (invite a partner or friend to share the tab)"
+              : `${state.people.length} members`}
+            . Paybacks are due when you clear the month.
+          </div>
+        ) : shareMode === "open" ? (
           <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground space-y-1">
             <p>
               Selected members each enter their own share. Amounts only count
@@ -380,7 +418,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           Cancel
         </Button>
         <Button onClick={submit} disabled={saving}>
-          {saving ? "Saving…" : "Create spend"}
+          {saving ? "Saving…" : isMonthlyTab ? "Add to tab" : "Create spend"}
         </Button>
       </DialogFooter>
     </DialogContent>

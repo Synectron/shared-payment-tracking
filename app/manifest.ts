@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Settora",
     short_name: "Settora",
     description:
-      "Shared cards, UPI, and paybacks that need approval — by OpusKiln.",
+      "Shared cards, UPI, and paybacks that need approval. Built by OpusKiln.",
     start_url: "/",
     scope: "/",
     display: "standalone",

@@ -19,6 +19,9 @@ export type ShareStatus =
 
 export type ShareMode = "assigned" | "open";
 
+/** standard = per-spend splits; monthly_tab = running month account cleared at month end */
+export type TrackingMode = "standard" | "monthly_tab";
+
 export type ClaimStatus = "pending" | "approved" | "rejected";
 
 export type Person = {
@@ -82,6 +85,7 @@ export type GroupSummary = {
   name: string;
   inviteCode: string;
   currency: string;
+  trackingMode: TrackingMode;
   createdBy: string;
 };
 
@@ -90,6 +94,7 @@ export type LedgerState = {
   groupName: string;
   inviteCode: string;
   currency: string;
+  trackingMode: TrackingMode;
   createdBy: string;
   currentUserRole: "owner" | "member";
   people: Person[];

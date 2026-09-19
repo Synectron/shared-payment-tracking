@@ -15,7 +15,14 @@ export function SiteFooter({ className }: { className?: string }) {
         />
         <p className="text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
           Property of{" "}
-          <span className="font-medium text-primary/75">Opus Kiln</span>
+          <a
+            href="https://www.opuskiln.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary/75 underline-offset-2 hover:underline"
+          >
+            Opus Kiln
+          </a>
           {" · "}
           made with love by{" "}
           <span className="font-medium text-primary/75">Shubham</span>

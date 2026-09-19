@@ -58,6 +58,16 @@ export function formatSettleBy(monthKey: MonthKey): string {
   return "Settle by " + label;
 }
 
+export function formatClearBy(monthKey: MonthKey): string {
+  const { end } = monthRange(monthKey);
+  const [year, month, day] = end.split("-").map(Number);
+  const label = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(
+    "en-US",
+    { month: "short", day: "numeric", timeZone: "UTC" }
+  );
+  return "Clear by " + label;
+}
+
 export function daysLeftInMonth(
   monthKey: MonthKey,
   today: string = todayInTz()
@@ -70,13 +80,27 @@ export function daysLeftInMonth(
 
 export function settleCountdownLabel(
   monthKey: MonthKey,
-  today: string = todayInTz()
+  today: string = todayInTz(),
+  opts?: { monthlyTab?: boolean }
 ): string {
   const days = daysLeftInMonth(monthKey, today);
-  if (days < 0) return "Month ended — settle leftover shares when you can";
-  if (days === 0) return "Last day — settle today";
-  if (days === 1) return "1 day left to settle";
-  return days + " days left · " + formatSettleBy(monthKey);
+  const clear = opts?.monthlyTab;
+  if (days < 0) {
+    return clear
+      ? "Month ended. Clear leftover tab when you can."
+      : "Month ended. Settle leftover shares when you can.";
+  }
+  if (days === 0) {
+    return clear ? "Last day: clear the tab today" : "Last day: settle today";
+  }
+  if (days === 1) {
+    return clear ? "1 day left to clear the tab" : "1 day left to settle";
+  }
+  return (
+    days +
+    " days left · " +
+    (clear ? formatClearBy(monthKey) : formatSettleBy(monthKey))
+  );
 }
 
 export function shiftMonth(monthKey: MonthKey, delta: number): MonthKey {

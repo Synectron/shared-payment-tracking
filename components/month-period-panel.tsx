@@ -29,6 +29,7 @@ import {
 export function MonthPeriodPanel() {
   const { state } = useLedger();
   const { requestSettle } = useDialogs();
+  const isMonthlyTab = state.trackingMode === "monthly_tab";
   const active = currentMonthKey();
   const [monthKey, setMonthKey] = useState<MonthKey>(active);
   const viewingCurrent = isCurrentMonth(monthKey, active);
@@ -70,12 +71,18 @@ export function MonthPeriodPanel() {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <CardTitle className="font-heading text-xl tracking-tight">
-              {formatMonthLabel(monthKey)}
+              {isMonthlyTab
+                ? `Tab · ${formatMonthLabel(monthKey)}`
+                : formatMonthLabel(monthKey)}
             </CardTitle>
             <CardDescription className="mt-1">
               {viewingCurrent
-                ? "Keep logging spends. Settle before the month ends."
-                : "Past month — summary only. Open shares still settle the usual way."}
+                ? isMonthlyTab
+                  ? "Running account for the month. Add spends as you go, then clear the tab."
+                  : "Keep logging spends. Settle before the month ends."
+                : isMonthlyTab
+                  ? "Past month, summary only. You can still clear leftover claims."
+                  : "Past month, summary only. Open shares still settle the usual way."}
             </CardDescription>
           </div>
           <div className="flex items-center gap-1">
@@ -102,14 +109,18 @@ export function MonthPeriodPanel() {
         </div>
         {viewingCurrent ? (
           <p className="text-xs text-muted-foreground">
-            {settleCountdownLabel(monthKey)}
+            {settleCountdownLabel(monthKey, undefined, {
+              monthlyTab: isMonthlyTab,
+            })}
           </p>
         ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <p className="text-xs text-muted-foreground">Total spent</p>
+            <p className="text-xs text-muted-foreground">
+              {isMonthlyTab ? "On the tab" : "Total spent"}
+            </p>
             <p className="font-heading text-lg tabular-nums">
               {formatMoney(totalSpent, state.currency)}
             </p>
@@ -151,7 +162,7 @@ export function MonthPeriodPanel() {
                       variant="outline"
                       onClick={() => requestSettle(pair.toId, monthKey)}
                     >
-                      Settle
+                      {isMonthlyTab ? "Clear" : "Settle"}
                     </Button>
                   ) : null}
                 </li>
@@ -162,15 +173,19 @@ export function MonthPeriodPanel() {
           <p className="text-sm text-muted-foreground">
             {totalSpent === 0
               ? viewingCurrent
-                ? "No spends this month yet. Invite her on People, log what you pay, settle before month end."
+                ? isMonthlyTab
+                  ? "Nothing on the tab yet. Invite a partner or friend on People, log what you pay, and clear before month end."
+                  : "No spends this month yet. Invite a friend on People, log what you pay, and settle before month end."
                 : "No spends logged this month."
-              : "This month’s shares are even — nothing left to settle."}
+              : isMonthlyTab
+                ? "This month’s tab is even. Nothing left to clear."
+                : "This month’s shares are even. Nothing left to settle."}
           </p>
         )}
 
         {viewingCurrent && youOwePairs.length > 0 ? (
           <Button onClick={settleMonth} className="w-full sm:w-auto">
-            Settle this month
+            {isMonthlyTab ? "Clear month / Close tab" : "Settle this month"}
           </Button>
         ) : null}
       </CardContent>

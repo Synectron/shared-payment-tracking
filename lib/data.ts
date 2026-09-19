@@ -9,7 +9,12 @@ import type {
   RepayMethod,
   ShareStatus,
   SourceKind,
+  TrackingMode,
 } from "@/lib/types";
+
+function parseTrackingMode(value: unknown): TrackingMode {
+  return value === "monthly_tab" ? "monthly_tab" : "standard";
+}
 
 export async function getCurrentUser() {
   const supabase = await createClient();
@@ -28,7 +33,9 @@ export async function listMyGroups(): Promise<GroupSummary[]> {
 
   const { data: memberships } = await supabase
     .from("group_members")
-    .select("group_id, groups(id, name, invite_code, currency, created_by)")
+    .select(
+      "group_id, groups(id, name, invite_code, currency, tracking_mode, created_by)"
+    )
     .eq("user_id", user.id);
 
   return (memberships ?? [])
@@ -38,6 +45,7 @@ export async function listMyGroups(): Promise<GroupSummary[]> {
         name: string;
         invite_code: string;
         currency: string;
+        tracking_mode: string | null;
         created_by: string;
       } | null;
       if (!group) return null;
@@ -46,6 +54,7 @@ export async function listMyGroups(): Promise<GroupSummary[]> {
         name: group.name,
         inviteCode: group.invite_code,
         currency: group.currency ?? "INR",
+        trackingMode: parseTrackingMode(group.tracking_mode),
         createdBy: group.created_by,
       } satisfies GroupSummary;
     })
@@ -71,7 +80,7 @@ export async function loadGroupLedger(
 
   const { data: group } = await supabase
     .from("groups")
-    .select("id, name, invite_code, currency, created_by")
+    .select("id, name, invite_code, currency, tracking_mode, created_by")
     .eq("id", groupId)
     .single();
   if (!group) return null;
@@ -178,6 +187,7 @@ export async function loadGroupLedger(
     groupName: group.name,
     inviteCode: group.invite_code,
     currency: (group.currency as string) ?? "INR",
+    trackingMode: parseTrackingMode(group.tracking_mode),
     createdBy: group.created_by as string,
     currentUserRole:
       membership.role === "owner" ? ("owner" as const) : ("member" as const),

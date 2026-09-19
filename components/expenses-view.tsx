@@ -18,6 +18,7 @@ export function ExpensesView() {
   const { requestMarkPaid, openAddExpense } = useDialogs();
   const [filter, setFilter] = useState<Filter>("month");
   const thisMonth = currentMonthKey();
+  const isMonthlyTab = state.trackingMode === "monthly_tab";
 
   const items = useMemo(() => {
     const sorted = [...state.expenses].sort((a, b) =>
@@ -36,28 +37,46 @@ export function ExpensesView() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-heading text-3xl tracking-tight">Spends</h1>
+          <h1 className="font-heading text-3xl tracking-tight">
+            {isMonthlyTab ? "Month tab" : "Spends"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Log spends through the month. Settle open shares before month end —
-            creators still approve claims.
+            {isMonthlyTab
+              ? "Log spends as they happen. Clear the tab before month end. Creators still approve claims."
+              : "Log spends through the month. Settle open shares before month end. Creators still approve claims."}
           </p>
         </div>
-        <Button onClick={openAddExpense}>New spend</Button>
+        <Button onClick={openAddExpense}>
+          {isMonthlyTab ? "Add spend" : "New spend"}
+        </Button>
       </div>
 
       <MonthPeriodPanel />
 
-      <FlowTip title="Adding your share">
-        <p>
-          On an open bill, enter your amount and submit. It stays pending until
-          the bill creator or group owner approves. After that, pay them via the
-          UPI ID or phone on People, then Claim paid.
-        </p>
-        <p>
-          Equal-split bills already have amounts. Just pay, claim, and wait for
-          approval.
-        </p>
-      </FlowTip>
+      {isMonthlyTab ? (
+        <FlowTip title="Running account">
+          <p>
+            Each spend is equal-split across the group and added to this
+            month&apos;s tab. Pay your partner or friend via UPI or phone on
+            People, claim paid, then they approve.
+          </p>
+          <p>
+            Use Clear month on Home (or here) to close the tab before month end.
+          </p>
+        </FlowTip>
+      ) : (
+        <FlowTip title="Adding your share">
+          <p>
+            On an open bill, enter your amount and submit. It stays pending
+            until the bill creator or group owner approves. After that, pay them
+            via the UPI ID or phone on People, then Claim paid.
+          </p>
+          <p>
+            Equal-split bills already have amounts. Just pay, claim, and wait
+            for approval.
+          </p>
+        </FlowTip>
+      )}
 
       <Tabs
         value={filter}
@@ -77,16 +96,20 @@ export function ExpensesView() {
           <p className="font-medium">Nothing in this list</p>
           <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
             {filter === "month"
-              ? "No spends this month yet. Invite her, keep logging, settle before month end."
+              ? isMonthlyTab
+                ? "Nothing on the tab yet. Invite a partner or friend, keep logging, clear before month end."
+                : "No spends this month yet. Invite a friend, keep logging, settle before month end."
               : filter === "overdue"
                 ? "No overdue shares. Check Open if people still owe."
                 : filter === "settled"
                   ? "Nothing settled yet. Claims count after the creator approves."
-                  : "Create a spend after you pay for the group. Pick equal split or let members add their own shares."}
+                  : isMonthlyTab
+                    ? "Add a spend after you pay for the group. It lands on this month’s tab with equal split."
+                    : "Create a spend after you pay for the group. Pick equal split or let members add their own shares."}
           </p>
           {filter === "all" || filter === "open" || filter === "month" ? (
             <Button size="sm" onClick={openAddExpense}>
-              New spend
+              {isMonthlyTab ? "Add spend" : "New spend"}
             </Button>
           ) : null}
         </div>

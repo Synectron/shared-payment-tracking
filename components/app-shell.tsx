@@ -39,10 +39,16 @@ export function AppShell({
   const groupId = params.groupId;
   const { state, reminders, currentUser } = useLedger();
   const { openAddExpense } = useDialogs();
+  const isMonthlyTab = state.trackingMode === "monthly_tab";
+  const addSpendLabel = isMonthlyTab ? "Add spend" : "New spend";
 
   const nav = [
     { href: `/g/${groupId}`, label: "Home", icon: LayoutDashboardIcon, exact: true },
-    { href: `/g/${groupId}/expenses`, label: "Spends", icon: ReceiptIcon },
+    {
+      href: `/g/${groupId}/expenses`,
+      label: isMonthlyTab ? "Tab" : "Spends",
+      icon: ReceiptIcon,
+    },
     { href: `/g/${groupId}/cards`, label: "Sources", icon: CreditCardIcon },
     { href: `/g/${groupId}/people`, label: "People", icon: UsersIcon },
   ];
@@ -99,7 +105,7 @@ export function AppShell({
             <ThemeToggle />
             <Button className="hidden sm:inline-flex" onClick={openAddExpense}>
               <PlusIcon />
-              New spend
+              {addSpendLabel}
             </Button>
           </div>
         </div>

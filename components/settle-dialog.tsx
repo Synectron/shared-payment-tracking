@@ -36,6 +36,8 @@ export function SettleDialog({
   const monthKey = target?.monthKey;
   const other = personById(state.people, otherId ?? "");
   const you = personById(state.people, state.currentUserId);
+  const isMonthlyTab = state.trackingMode === "monthly_tab";
+  const clearingMonth = Boolean(monthKey && isMonthlyTab);
 
   const monthNet =
     otherId && monthKey
@@ -52,7 +54,9 @@ export function SettleDialog({
     const scope = monthKey ? ` for ${formatMonthLabel(monthKey)}` : "";
     setMessage(
       count > 0
-        ? `Submitted ${count} payment claim${count === 1 ? "" : "s"}${scope} for ${other?.name} to approve.`
+        ? clearingMonth
+          ? `Submitted ${count} claim${count === 1 ? "" : "s"} to clear ${formatMonthLabel(monthKey!)} with ${other?.name}. They still need to approve.`
+          : `Submitted ${count} payment claim${count === 1 ? "" : "s"}${scope} for ${other?.name} to approve.`
         : `No open shares you owe ${other?.name}${scope}. They must claim payments for what they owe you.`
     );
     if (count > 0) onClose();
@@ -71,19 +75,39 @@ export function SettleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {monthKey ? `Settle ${formatMonthLabel(monthKey)}` : "Settle up"}
+            {clearingMonth
+              ? `Clear ${formatMonthLabel(monthKey!)}`
+              : monthKey
+                ? `Settle ${formatMonthLabel(monthKey)}`
+                : "Settle up"}
           </DialogTitle>
           <DialogDescription>
-            Claim unpaid shares you owe {other?.name}
-            {monthKey ? ` from ${formatMonthLabel(monthKey)}` : ""}. They still
-            need to approve each claim. ({you?.name})
-            {monthNet && monthNet.fromId === state.currentUserId ? (
+            {clearingMonth ? (
               <>
-                {" "}
-                Net this month:{" "}
-                {formatMoney(monthNet.amountCents, state.currency)}.
+                Close this month&apos;s tab with {other?.name} by claiming what
+                you owe ({you?.name}). They still need to approve each claim.
+                {monthNet && monthNet.fromId === state.currentUserId ? (
+                  <>
+                    {" "}
+                    Net this month:{" "}
+                    {formatMoney(monthNet.amountCents, state.currency)}.
+                  </>
+                ) : null}
               </>
-            ) : null}
+            ) : (
+              <>
+                Claim unpaid shares you owe {other?.name}
+                {monthKey ? ` from ${formatMonthLabel(monthKey)}` : ""}. They
+                still need to approve each claim. ({you?.name})
+                {monthNet && monthNet.fromId === state.currentUserId ? (
+                  <>
+                    {" "}
+                    Net this month:{" "}
+                    {formatMoney(monthNet.amountCents, state.currency)}.
+                  </>
+                ) : null}
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         {message ? (
@@ -93,7 +117,9 @@ export function SettleDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={confirm}>Submit claims</Button>
+          <Button onClick={confirm}>
+            {clearingMonth ? "Clear tab" : "Submit claims"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
