@@ -5,6 +5,7 @@ import { listMyGroups } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -127,7 +128,9 @@ export default async function HomePage() {
             autoComplete="tel"
           />
         </div>
-        <Button type="submit">Create group</Button>
+        <PendingSubmitButton pendingLabel="Creating…">
+          Create group
+        </PendingSubmitButton>
       </form>
 
       <form action={joinGroupByCode} className="space-y-3 rounded-xl border p-4">
@@ -142,9 +145,9 @@ export default async function HomePage() {
             className="font-mono"
           />
         </div>
-        <Button type="submit" variant="secondary">
+        <PendingSubmitButton variant="secondary" pendingLabel="Joining…">
           Join group
-        </Button>
+        </PendingSubmitButton>
       </form>
 
       <SiteFooter className="-mx-4 mt-4 border-t-0" />

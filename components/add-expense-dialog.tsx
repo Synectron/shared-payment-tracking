@@ -104,6 +104,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   }
 
   async function submit() {
+    if (saving) return;
     const amountCents = parseMoneyToCents(amount);
     if (!title.trim()) {
       setError(

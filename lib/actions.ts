@@ -159,6 +159,23 @@ export async function createGroup(formData: FormData): Promise<void> {
       .eq("id", user.id);
   }
 
+  // Soft debounce for double-submit: reuse a same-name group created in the last 15s.
+  const recentSince = new Date(Date.now() - 15_000).toISOString();
+  const { data: recent } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("created_by", user.id)
+    .eq("name", name)
+    .gte("created_at", recentSince)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (recent) {
+    revalidatePath("/");
+    redirect(`/g/${recent.id}`);
+  }
+
   const { data, error } = await supabase
     .from("groups")
     .insert({
