@@ -50,7 +50,9 @@ export async function signInWithMagicLink(formData: FormData) {
   const next = String(formData.get("next") ?? "/");
   if (!email) return { error: "Enter your email." };
 
-  const redirectTo = `${siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`;
+  // Hash-token redirects from Supabase /verify must land on a client page
+  // (/auth/confirm). PKCE `code` and our Resend `token_hash` links use /auth/callback.
+  const redirectTo = `${siteOrigin()}/auth/confirm?next=${encodeURIComponent(next)}`;
 
   // Prefer Resend + admin generateLink (bypasses Supabase 2/hr email limit)
   if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.RESEND_API_KEY) {
@@ -64,16 +66,23 @@ export async function signInWithMagicLink(formData: FormData) {
 
       if (error) return { error: error.message };
 
+      // Prefer hashed_token → our callback (skips Supabase /verify, which often
+      // hangs or returns hash tokens the server route cannot read).
+      const hashedToken = data.properties?.hashed_token;
       const actionLink = data.properties?.action_link;
-      if (!actionLink) {
+      const signInLink = hashedToken
+        ? `${siteOrigin()}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=magiclink&next=${encodeURIComponent(next)}`
+        : actionLink;
+
+      if (!signInLink) {
         return { error: "Could not generate a sign-in link." };
       }
 
       const mailed = await sendEmail({
         to: email,
         subject: "Sign in to Settora",
-        html: magicLinkEmailHtml(actionLink),
-        text: `Here’s your one-time Settora sign-in link: ${actionLink}`,
+        html: magicLinkEmailHtml(signInLink),
+        text: `Here’s your one-time Settora sign-in link: ${signInLink}`,
       });
 
       if (mailed.error) return { error: mailed.error };
