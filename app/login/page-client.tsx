@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -33,12 +34,15 @@ export default function LoginPage() {
     <div className="flex min-h-full flex-1 flex-col">
       <div className="flex flex-1 items-center justify-center px-4 py-16">
         <div className="w-full max-w-md space-y-6">
-          <div>
-            <p className="text-sm font-medium text-primary">Settora</p>
-            <h1 className="font-heading text-3xl tracking-tight">Sign in</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              No password. We email you a one-time sign-in link.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-primary">Settora</p>
+              <h1 className="font-heading text-3xl tracking-tight">Sign in</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                No password. We email you a one-time sign-in link.
+              </p>
+            </div>
+            <ThemeToggle />
           </div>
 
           <PwaInstallButton />

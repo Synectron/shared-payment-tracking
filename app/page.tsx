@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from "@/lib/money";
 
 export default async function HomePage() {
@@ -23,11 +24,14 @@ export default async function HomePage() {
             Start a group, or paste an invite link or code to join one.
           </p>
         </div>
-        <form action={signOut}>
-          <Button type="submit" variant="outline" size="sm">
-            Sign out
-          </Button>
-        </form>
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
+          <form action={signOut}>
+            <Button type="submit" variant="outline" size="sm">
+              Sign out
+            </Button>
+          </form>
+        </div>
       </div>
 
       <PwaInstallButton />

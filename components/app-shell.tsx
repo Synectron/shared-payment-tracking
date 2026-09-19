@@ -20,6 +20,7 @@ import {
 import { useDialogs } from "@/components/dialogs-provider";
 import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useLedger } from "@/lib/ledger-store";
 import { cn } from "@/lib/utils";
 import type { GroupSummary } from "@/lib/types";
@@ -95,6 +96,7 @@ export function AppShell({
                 </SelectContent>
               </Select>
             ) : null}
+            <ThemeToggle />
             <Button className="hidden sm:inline-flex" onClick={openAddExpense}>
               <PlusIcon />
               New spend
