@@ -35,18 +35,56 @@ export function MarkPaidDialog({
   target: PaidTarget | null;
   onClose: () => void;
 }) {
-  const { state, markPaid } = useLedger();
-  const [method, setMethod] = useState<RepayMethod>("venmo");
+  const { state, claimPaid, approveClaim, rejectClaim, currentUser } =
+    useLedger();
+  const [method, setMethod] = useState<RepayMethod>("upi");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
   const expense = state.expenses.find((item) => item.id === target?.expenseId);
   const share = expense?.shares.find((item) => item.personId === target?.personId);
   const debtor = personById(state.people, target?.personId ?? "");
   const creditor = personById(state.people, expense?.paidById ?? "");
   const source = sourceById(state.sources, expense?.sourceId ?? "");
+  const isReceiver = currentUser?.id === expense?.paidById;
+  const isPendingClaim = share?.status === "pending";
 
-  function confirm() {
+  async function confirmClaim() {
     if (!target) return;
-    markPaid({ ...target, repaidWith: method });
+    setPending(true);
+    setError("");
+    const result = await claimPaid({ ...target, repaidWith: method });
+    setPending(false);
+    if (result) {
+      setError(result);
+      return;
+    }
+    onClose();
+  }
+
+  async function confirmApprove() {
+    if (!target) return;
+    setPending(true);
+    setError("");
+    const result = await approveClaim(target.expenseId, target.personId);
+    setPending(false);
+    if (result) {
+      setError(result);
+      return;
+    }
+    onClose();
+  }
+
+  async function confirmReject() {
+    if (!target) return;
+    setPending(true);
+    setError("");
+    const result = await rejectClaim(target.expenseId, target.personId);
+    setPending(false);
+    if (result) {
+      setError(result);
+      return;
+    }
     onClose();
   }
 
@@ -54,41 +92,72 @@ export function MarkPaidDialog({
     <Dialog open={Boolean(target)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Mark as paid</DialogTitle>
+          <DialogTitle>
+            {isPendingClaim && isReceiver ? "Approve payment" : "Claim payment"}
+          </DialogTitle>
           <DialogDescription>
             {debtor && share && expense ? (
               <>
-                {debtor.name} is settling {formatMoney(share.amountCents)} for{" "}
+                {debtor.name} · {formatMoney(share.amountCents, state.currency)} for{" "}
                 {expense.title}
                 {source ? ` on ${source.name}` : ""}, owed to {creditor?.name}.
+                {isPendingClaim
+                  ? " Waiting for the receiver to approve."
+                  : " This stays pending until the receiver approves."}
               </>
             ) : (
-              "Confirm this repayment."
+              "Confirm this repayment claim."
             )}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-1.5">
-          <Label>How did they pay you back?</Label>
-          <Select value={method} onValueChange={(value) => setMethod(value as RepayMethod)}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(REPAY_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isPendingClaim ? (
+          <div className="grid gap-1.5">
+            <Label>How was it paid?</Label>
+            <Select
+              value={method}
+              onValueChange={(value) => setMethod(value as RepayMethod)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(REPAY_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={confirm}>Mark paid</Button>
+          {isPendingClaim && isReceiver ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={confirmReject}
+                disabled={pending}
+              >
+                Reject
+              </Button>
+              <Button onClick={confirmApprove} disabled={pending}>
+                Approve
+              </Button>
+            </>
+          ) : isPendingClaim ? (
+            <Button disabled>Awaiting approval</Button>
+          ) : (
+            <Button onClick={confirmClaim} disabled={pending}>
+              Submit claim
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

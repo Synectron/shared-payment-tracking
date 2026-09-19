@@ -23,7 +23,7 @@ export function RemindersPanel({
         <BellIcon />
         <AlertTitle>No missed payments</AlertTitle>
         <AlertDescription>
-          Everyone who owes on a past-due charge has marked it paid. New due
+          Everyone who owes on a past-due charge has settled or claimed. New due
           dates still show on each expense.
         </AlertDescription>
       </Alert>
@@ -41,8 +41,8 @@ export function RemindersPanel({
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          These shares passed their due date. Mark them paid when the money
-          lands, or copy a reminder so it does not slip again.
+          These shares passed their due date. Claim paid when the money lands
+          (receiver must approve), or copy a reminder.
         </p>
         <ul className="space-y-2">
           {reminders.map((reminder) => {
@@ -58,7 +58,7 @@ export function RemindersPanel({
                   <div className="min-w-0">
                     <p className="text-sm font-medium">
                       {debtor?.name} still owes{" "}
-                      {formatMoney(reminder.share.amountCents)}
+                      {formatMoney(reminder.share.amountCents, state.currency)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {reminder.expense.title}
@@ -78,7 +78,7 @@ export function RemindersPanel({
                       })
                     }
                   >
-                    Mark paid
+                    Claim paid
                   </Button>
                   <Button
                     size="xs"

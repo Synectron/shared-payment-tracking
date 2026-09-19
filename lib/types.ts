@@ -1,17 +1,22 @@
-export type SourceKind = "card" | "utility";
+export type SourceKind = "card" | "upi" | "utility";
 
 export type RepayMethod =
-  | "venmo"
-  | "zelle"
-  | "cash"
+  | "upi"
+  | "card"
   | "bank"
+  | "cash"
   | "paid-the-card"
   | "other";
+
+export type ShareStatus = "unpaid" | "pending" | "paid";
+
+export type ClaimStatus = "pending" | "approved" | "rejected";
 
 export type Person = {
   id: string;
   name: string;
   color: string;
+  email?: string;
 };
 
 export type PaymentSource = {
@@ -23,14 +28,22 @@ export type PaymentSource = {
   provider?: string;
 };
 
-export type ShareStatus = "unpaid" | "paid";
-
 export type Share = {
+  id: string;
   personId: string;
   amountCents: number;
   status: ShareStatus;
   paidAt?: string;
   repaidWith?: RepayMethod;
+};
+
+export type PaymentClaim = {
+  id: string;
+  shareId: string;
+  claimedBy: string;
+  method: RepayMethod;
+  status: ClaimStatus;
+  createdAt: string;
 };
 
 export type Expense = {
@@ -39,32 +52,58 @@ export type Expense = {
   amountCents: number;
   date: string;
   dueDate: string;
+  /** Person who created the spend — always the receiver / approver */
   paidById: string;
   usedById: string;
   sourceId: string;
   chargedToSourceId?: string;
   notes?: string;
+  billPath?: string;
+  billUrl?: string;
   shares: Share[];
   createdAt: string;
 };
 
+export type GroupSummary = {
+  id: string;
+  name: string;
+  inviteCode: string;
+  currency: string;
+  createdBy: string;
+};
+
 export type LedgerState = {
+  groupId: string;
+  groupName: string;
+  inviteCode: string;
+  currency: string;
   people: Person[];
   sources: PaymentSource[];
   expenses: Expense[];
+  claims: PaymentClaim[];
   currentUserId: string;
 };
 
 export const REPAY_LABELS: Record<RepayMethod, string> = {
-  venmo: "Venmo",
-  zelle: "Zelle",
-  cash: "Cash",
+  upi: "UPI",
+  card: "Card",
   bank: "Bank transfer",
+  cash: "Cash",
   "paid-the-card": "Paid the card directly",
   other: "Other",
 };
 
 export const SOURCE_KIND_LABELS: Record<SourceKind, string> = {
   card: "Card",
+  upi: "UPI",
   utility: "Utility / bill",
 };
+
+export const PERSON_COLORS = [
+  "#0f766e",
+  "#b45309",
+  "#1d4ed8",
+  "#be123c",
+  "#7c3aed",
+  "#047857",
+];

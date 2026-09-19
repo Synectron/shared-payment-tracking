@@ -1,18 +1,35 @@
-# Tabwise
+# Settora
 
-A Splitwise-style tab for friends who use each other’s cards. Log what was charged, which card or utility it hit, split the cost, mark each person paid, and catch repayments that slipped.
+Shared card / UPI tracking for friends. Create a group, pick a **currency**, share an invite link/code or email a custom invite, log charges, claim repayments, and require the **receiver to approve** before anything counts as paid.
 
-The demo household (Maya, Jordan, Alex, Priya) loads on first visit. Data stays in this browser via localStorage — no account required.
+## Stack
 
-## What you can do
+- Next.js (App Router) on Vercel
+- Supabase Auth (magic link) + Postgres + RLS + Storage
+- Resend for outbound email from `contact@mail.opuskiln.com` (bypasses Supabase’s ~2 emails/hour free-tier limit)
 
-- **Log a charge** — who used it, who is owed, which card or bill, and (for utilities) which card actually paid the bill.
-- **Mark paid** — settle one person’s share and record how they paid you back (Venmo, Zelle, cash, bank, or they paid the card).
-- **Missed-payment reminders** — overdue shares sit on the home screen. Copy a nudge instead of hoping the group chat remembers.
-- **Cards & utilities** — see spend and unpaid balances on Maya’s Chase, Jordan’s Amex, electric, Wi-Fi, and anything you add.
-- **Switch “viewing as”** in the header to see the tab from a friend’s side.
+## Setup
 
-## Run locally
+1. Copy `.env.example` to `.env.local` and set:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SITE_URL=http://localhost:43123
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+RESEND_API_KEY=re_xxxx
+EMAIL_FROM=Settora <contact@mail.opuskiln.com>
+```
+
+2. In [Resend](https://resend.com): verify the **subdomain** `mail.opuskiln.com` (not the root domain) and create an API key.
+
+3. In Supabase Dashboard → Authentication → URL configuration, add:
+   - Site URL: `http://localhost:43123` (and your Vercel URL in production)
+   - Redirect URLs: `http://localhost:43123/auth/callback` and `https://YOUR_DOMAIN/auth/callback`
+
+4. Apply SQL migrations in `supabase/migrations/` (already applied on the Settora project).
+
+5. Run:
 
 ```bash
 npm install
@@ -21,11 +38,28 @@ npm run dev
 
 Open [http://localhost:43123](http://localhost:43123).
 
-```bash
-npm run build
-npm start
-```
+## Email (custom domain)
 
-## Reset
+With `SUPABASE_SERVICE_ROLE_KEY` + `RESEND_API_KEY` set:
 
-People → **Reset demo** restores the sample group and overdue charges.
+- **Sign-in** uses `admin.generateLink` and sends the magic link via Resend (no Supabase OTP email)
+- **Group invites** can be emailed from People → Email invite
+
+Without those keys, sign-in falls back to Supabase’s built-in email (rate-limited).
+
+## Currency
+
+When creating a group, choose INR, USD, EUR, GBP, AED, SGD, AUD, or CAD. All amounts in that group format with that currency.
+
+## How invites work
+
+- Each group has an **invite code** and link: `/join/<code>`
+- Share the link/code, or email a custom invite
+- Members can copy the link or regenerate the code under People
+
+## Spends (instances)
+
+- Whoever **pays** creates a **spend** in the group (party, dinner, trip…)
+- That person is automatically the **receiver / approver**
+- Optionally **upload the bill**
+- Others claim they paid back → creator approves or rejects

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, CopyIcon, CreditCardIcon, RotateCcwIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, CreditCardIcon, PaperclipIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,28 +15,28 @@ import {
 import { formatDisplayDate, formatMoney, relativeDueLabel } from "@/lib/money";
 import { REPAY_LABELS, type Expense, type Person, type PaymentSource } from "@/lib/types";
 import type { PaidTarget } from "@/components/mark-paid-dialog";
+import { useLedger } from "@/lib/ledger-store";
 
 export function ExpenseCard({
   expense,
   people,
   sources,
   onMarkPaid,
-  onMarkUnpaid,
 }: {
   expense: Expense;
   people: Person[];
   sources: PaymentSource[];
   onMarkPaid: (target: PaidTarget) => void;
-  onMarkUnpaid: (expenseId: string, personId: string) => void;
 }) {
+  const { currentUser, approveClaim, rejectClaim, state } = useLedger();
   const source = sourceById(sources, expense.sourceId);
   const charged = expense.chargedToSourceId
     ? sourceById(sources, expense.chargedToSourceId)
     : undefined;
   const payer = personById(people, expense.paidById);
-  const user = personById(people, expense.usedById);
   const overdue = isOverdue(expense);
   const dueSoon = isDueSoon(expense);
+  const isReceiver = currentUser?.id === expense.paidById;
 
   async function copyNudge(personId: string) {
     const share = expense.shares.find((item) => item.personId === personId);
@@ -59,7 +59,7 @@ export function ExpenseCard({
           </div>
           <div className="text-right">
             <p className="tabular-nums text-base font-semibold">
-              {formatMoney(expense.amountCents)}
+              {formatMoney(expense.amountCents, state.currency)}
             </p>
             {overdue ? (
               <Badge variant="destructive">Overdue</Badge>
@@ -85,20 +85,26 @@ export function ExpenseCard({
             {source?.last4 ? ` · ${source.last4}` : ""}
             {source?.provider ? ` · ${source.provider}` : ""}
           </span>
+          {payer && (
+            <span className="rounded-full bg-muted px-2 py-1">
+              {payer.name} created · approves paybacks
+            </span>
+          )}
           {charged && (
             <span className="rounded-full bg-muted px-2 py-1">
               Billed to {charged.name}
             </span>
           )}
-          {user && payer && user.id !== payer.id && (
-            <span className="rounded-full bg-muted px-2 py-1">
-              {user.name} used {payer.name}&apos;s card
-            </span>
-          )}
-          {user && payer && user.id === payer.id && (
-            <span className="rounded-full bg-muted px-2 py-1">
-              {payer.name} paid
-            </span>
+          {expense.billUrl && (
+            <a
+              href={expense.billUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-foreground underline-offset-2 hover:underline"
+            >
+              <PaperclipIcon className="size-3" />
+              View bill
+            </a>
           )}
         </div>
 
@@ -120,55 +126,73 @@ export function ExpenseCard({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       {person?.name}
-                      {isPayer ? " · covered the card" : ""}
+                      {isPayer ? " · covered (creator)" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground tabular-nums">
-                      {formatMoney(share.amountCents)}
+                      {formatMoney(share.amountCents, state.currency)}
                       {share.status === "paid" && share.repaidWith
                         ? ` · ${REPAY_LABELS[share.repaidWith]}`
-                        : ""}
+                        : share.status === "pending"
+                          ? " · awaiting approval"
+                          : ""}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {share.status === "paid" ? (
-                    <>
-                      <Badge variant="secondary">
-                        <CheckIcon />
-                        Paid
-                      </Badge>
-                      {!isPayer && (
+                    <Badge variant="secondary">
+                      <CheckIcon />
+                      Paid
+                    </Badge>
+                  ) : share.status === "pending" ? (
+                    isReceiver ? (
+                      <>
                         <Button
-                          variant="ghost"
                           size="xs"
-                          onClick={() => onMarkUnpaid(expense.id, share.personId)}
+                          onClick={() =>
+                            approveClaim(expense.id, share.personId)
+                          }
                         >
-                          <RotateCcwIcon />
-                          Undo
+                          Approve
                         </Button>
-                      )}
-                    </>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() =>
+                            rejectClaim(expense.id, share.personId)
+                          }
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <Badge variant="outline">Pending approval</Badge>
+                    )
                   ) : (
                     <>
-                      <Button
-                        size="xs"
-                        onClick={() =>
-                          onMarkPaid({
-                            expenseId: expense.id,
-                            personId: share.personId,
-                          })
-                        }
-                      >
-                        Mark paid
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => copyNudge(share.personId)}
-                      >
-                        <CopyIcon />
-                        Nudge
-                      </Button>
+                      {!isPayer && (
+                        <Button
+                          size="xs"
+                          onClick={() =>
+                            onMarkPaid({
+                              expenseId: expense.id,
+                              personId: share.personId,
+                            })
+                          }
+                        >
+                          Claim paid
+                        </Button>
+                      )}
+                      {!isPayer && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={() => copyNudge(share.personId)}
+                        >
+                          <CopyIcon />
+                          Nudge
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>

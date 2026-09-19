@@ -11,7 +11,7 @@ import { useLedger } from "@/lib/ledger-store";
 type Filter = "all" | "open" | "overdue" | "settled";
 
 export function ExpensesView() {
-  const { state, markUnpaid } = useLedger();
+  const { state } = useLedger();
   const { requestMarkPaid, openAddExpense } = useDialogs();
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -29,13 +29,13 @@ export function ExpensesView() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-heading text-3xl tracking-tight">Charges</h1>
+          <h1 className="font-heading text-3xl tracking-tight">Spends</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Every swipe and bill, which card it hit, and who has marked their
-            share paid.
+            Each spend is created by whoever paid. They approve when others
+            claim they&apos;ve paid back.
           </p>
         </div>
-        <Button onClick={openAddExpense}>Log charge</Button>
+        <Button onClick={openAddExpense}>New spend</Button>
       </div>
 
       <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
@@ -53,7 +53,7 @@ export function ExpensesView() {
           <p className="mt-1 text-sm text-muted-foreground">
             {filter === "overdue"
               ? "No overdue shares. Check Open if people still owe."
-              : "Log a charge to start the tab."}
+              : "Create a spend to start the tab."}
           </p>
         </div>
       ) : (
@@ -65,7 +65,6 @@ export function ExpensesView() {
               people={state.people}
               sources={state.sources}
               onMarkPaid={requestMarkPaid}
-              onMarkUnpaid={markUnpaid}
             />
           ))}
         </div>

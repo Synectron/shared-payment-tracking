@@ -35,16 +35,28 @@ export function AddSourceDialog({
   const [ownerId, setOwnerId] = useState(state.currentUserId);
   const [last4, setLast4] = useState("");
   const [provider, setProvider] = useState("");
+  const [error, setError] = useState("");
 
-  function submit() {
+  async function submit() {
     if (!name.trim()) return;
-    addSource({
+    setError("");
+    const result = await addSource({
       name: name.trim(),
       kind,
-      ownerId: kind === "card" ? ownerId : undefined,
-      last4: kind === "card" ? last4.replace(/\D/g, "").slice(-4) || undefined : undefined,
-      provider: kind === "utility" ? provider.trim() || undefined : undefined,
+      ownerId: kind === "utility" ? undefined : ownerId,
+      last4:
+        kind === "card"
+          ? last4.replace(/\D/g, "").slice(-4) || undefined
+          : undefined,
+      provider:
+        kind === "utility" || kind === "upi"
+          ? provider.trim() || undefined
+          : undefined,
     });
+    if (result) {
+      setError(result);
+      return;
+    }
     setName("");
     setLast4("");
     setProvider("");
@@ -55,82 +67,102 @@ export function AddSourceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a card or utility</DialogTitle>
+          <DialogTitle>Add a payment source</DialogTitle>
           <DialogDescription>
-            Track whose plastic got swiped and which household bill it covered.
+            Card, UPI ID, or a utility bill the group shares.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label>Type</Label>
-            <Select value={kind} onValueChange={(value) => setKind(value as SourceKind)}>
+            <Select
+              value={kind}
+              onValueChange={(value) => setKind(value as SourceKind)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="upi">UPI</SelectItem>
                 <SelectItem value="utility">Utility / bill</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="source-name">
-              {kind === "card" ? "Card nickname" : "Bill name"}
+              {kind === "card"
+                ? "Card nickname"
+                : kind === "upi"
+                  ? "UPI nickname"
+                  : "Bill name"}
             </Label>
             <Input
               id="source-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={kind === "card" ? "Jordan’s Amex Gold" : "Electric"}
+              placeholder={
+                kind === "card"
+                  ? "HDFC credit"
+                  : kind === "upi"
+                    ? "Personal UPI"
+                    : "Electric"
+              }
             />
           </div>
-          {kind === "card" ? (
-            <>
-              <div className="grid gap-1.5">
-                <Label>Card owner</Label>
-                <Select value={ownerId} onValueChange={setOwnerId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {state.people.map((person) => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {person.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="last4">Last 4 (optional)</Label>
-                <Input
-                  id="last4"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={last4}
-                  onChange={(event) => setLast4(event.target.value)}
-                  placeholder="4412"
-                />
-              </div>
-            </>
-          ) : (
+          {kind !== "utility" ? (
             <div className="grid gap-1.5">
-              <Label htmlFor="provider">Provider</Label>
+              <Label>Owner</Label>
+              <Select value={ownerId} onValueChange={setOwnerId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {state.people.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {person.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          {kind === "card" ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor="last4">Last 4 (optional)</Label>
+              <Input
+                id="last4"
+                inputMode="numeric"
+                maxLength={4}
+                value={last4}
+                onChange={(event) => setLast4(event.target.value)}
+                placeholder="4412"
+              />
+            </div>
+          ) : null}
+          {kind === "upi" || kind === "utility" ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor="provider">
+                {kind === "upi" ? "UPI ID / handle (optional)" : "Provider"}
+              </Label>
               <Input
                 id="provider"
                 value={provider}
                 onChange={(event) => setProvider(event.target.value)}
-                placeholder="ConEd, Spectrum…"
+                placeholder={
+                  kind === "upi" ? "name@okaxis" : "Electricity board…"
+                }
               />
             </div>
-          )}
+          ) : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={!name.trim()}>
-            Add {kind === "card" ? "card" : "utility"}
+            Add
           </Button>
         </DialogFooter>
       </DialogContent>

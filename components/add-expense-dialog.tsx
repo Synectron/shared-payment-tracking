@@ -43,21 +43,26 @@ export function AddExpenseDialog({
 }
 
 function AddExpenseForm({ onClose }: { onClose: () => void }) {
-  const { state, addExpense } = useLedger();
+  const { state, addExpense, currentUser } = useLedger();
   const cards = state.sources.filter((source) => source.kind === "card");
+  const upis = state.sources.filter((source) => source.kind === "upi");
   const utilities = state.sources.filter((source) => source.kind === "utility");
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(isoDate(0));
   const [dueDate, setDueDate] = useState(isoDate(7));
-  const [sourceId, setSourceId] = useState(cards[0]?.id ?? "");
-  const [chargedToSourceId, setChargedToSourceId] = useState(cards[0]?.id ?? "");
-  const [usedById, setUsedById] = useState(state.currentUserId);
-  const [paidById, setPaidById] = useState(state.currentUserId);
-  const [splitWith, setSplitWith] = useState<string[]>(state.people.map((p) => p.id));
+  const [sourceId, setSourceId] = useState(cards[0]?.id ?? upis[0]?.id ?? "");
+  const [chargedToSourceId, setChargedToSourceId] = useState(
+    cards[0]?.id ?? upis[0]?.id ?? ""
+  );
+  const [splitWith, setSplitWith] = useState<string[]>(
+    state.people.map((p) => p.id)
+  );
   const [notes, setNotes] = useState("");
+  const [billFile, setBillFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const selectedSource = sourceById(state.sources, sourceId);
   const isUtility = selectedSource?.kind === "utility";
@@ -72,24 +77,19 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
     }));
   }, [amount, splitWith, state.people]);
 
-  function onSourceChange(next: string) {
-    setSourceId(next);
-    const source = sourceById(state.sources, next);
-    if (source?.kind === "card" && source.ownerId) {
-      setPaidById(source.ownerId);
-    }
-  }
-
   function toggleSplit(id: string) {
+    if (id === state.currentUserId) return;
     setSplitWith((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
     );
   }
 
-  function submit() {
+  async function submit() {
     const amountCents = parseMoneyToCents(amount);
     if (!title.trim()) {
-      setError("Add a short title so the group knows what this was.");
+      setError("Name this spend (e.g. Saturday party).");
       return;
     }
     if (!amountCents) {
@@ -97,218 +97,231 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       return;
     }
     if (!sourceId) {
-      setError("Pick the card or utility this went on.");
+      setError("Pick how you paid (card / UPI / utility).");
       return;
     }
     if (splitWith.length === 0) {
-      setError("Split with at least one person.");
+      setError("Include at least yourself in the split.");
       return;
     }
-    if (!splitWith.includes(paidById)) {
-      setError("The person who is owed should be in the split.");
-      return;
-    }
-    addExpense({
+    setSaving(true);
+    setError("");
+    const err = await addExpense({
       title,
       amountCents,
       date,
       dueDate,
-      paidById,
-      usedById,
       sourceId,
       chargedToSourceId: isUtility ? chargedToSourceId || undefined : undefined,
       notes,
       splitWith,
+      billFile,
     });
+    setSaving(false);
+    if (err) {
+      setError(err);
+      return;
+    }
     onClose();
   }
 
   return (
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Log a charge</DialogTitle>
-          <DialogDescription>
-            Record who used whose card or which bill hit — then split it before
-            the reminder slips.
-          </DialogDescription>
-        </DialogHeader>
+    <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>New spend</DialogTitle>
+        <DialogDescription>
+          You paid — so you create this spend and you approve paybacks. Optionally
+          attach the bill.
+        </DialogDescription>
+      </DialogHeader>
 
-        <div className="grid gap-3">
+      <div className="grid gap-3">
+        <p className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
+          Receiver / approver:{" "}
+          <span className="font-medium text-foreground">
+            {currentUser?.name ?? "You"}
+          </span>{" "}
+          (whoever creates the spend)
+        </p>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor="title">What was it?</Label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Saturday party, dinner, trip…"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="title">What was it?</Label>
+            <Label htmlFor="amount">Amount</Label>
             <Input
-              id="title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Friday dinner, ConEd, Costco…"
+              id="amount"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="2500"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                inputMode="decimal"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="64.50"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="date">Charged on</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-              />
-            </div>
-          </div>
-
           <div className="grid gap-1.5">
-            <Label>Card or utility</Label>
-            <Select value={sourceId} onValueChange={onSourceChange}>
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label>How did you pay?</Label>
+          <Select value={sourceId} onValueChange={setSourceId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Card / UPI / utility" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Cards</SelectLabel>
+                {cards.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                    {source.last4 ? ` · ${source.last4}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>UPI</SelectLabel>
+                {upis.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                    {source.provider ? ` · ${source.provider}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>Utilities</SelectLabel>
+                {utilities.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                    {source.provider ? ` · ${source.provider}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isUtility && (
+          <div className="grid gap-1.5">
+            <Label>Which card paid this bill?</Label>
+            <Select
+              value={chargedToSourceId}
+              onValueChange={setChargedToSourceId}
+            >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose a card or bill" />
+                <SelectValue placeholder="Card that was charged" />
               </SelectTrigger>
               <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Cards</SelectLabel>
-                  {cards.map((source) => (
-                    <SelectItem key={source.id} value={source.id}>
-                      {source.name}
-                      {source.last4 ? ` · ${source.last4}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel>Utilities</SelectLabel>
-                  {utilities.map((source) => (
-                    <SelectItem key={source.id} value={source.id}>
-                      {source.name}
-                      {source.provider ? ` · ${source.provider}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
+                {cards.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+        )}
 
-          {isUtility && (
-            <div className="grid gap-1.5">
-              <Label>Which card paid this bill?</Label>
-              <Select value={chargedToSourceId} onValueChange={setChargedToSourceId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Card that was charged" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cards.map((source) => (
-                    <SelectItem key={source.id} value={source.id}>
-                      {source.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Who used it</Label>
-              <Select value={usedById} onValueChange={setUsedById}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {state.people.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>
-                      {person.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Who is owed</Label>
-              <Select value={paidById} onValueChange={setPaidById}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {state.people.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>
-                      {person.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="due">Pay-back due</Label>
-            <Input
-              id="due"
-              type="date"
-              value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Split with</Label>
-            <div className="grid gap-2">
-              {state.people.map((person) => (
-                <label
-                  key={person.id}
-                  className="flex items-center justify-between rounded-lg border border-border px-2.5 py-2"
-                >
-                  <span className="flex items-center gap-2">
-                    <PersonAvatar person={person} size="sm" />
-                    <span>{person.name}</span>
-                  </span>
-                  <Checkbox
-                    checked={splitWith.includes(person.id)}
-                    onCheckedChange={() => toggleSplit(person.id)}
-                  />
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {preview && (
-            <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-              {preview.map((row) => (
-                <div key={row.person?.id} className="flex justify-between py-0.5">
-                  <span>{row.person?.name}</span>
-                  <span className="tabular-nums text-foreground">
-                    {formatMoney(row.amountCents)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="notes">Note</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Alex borrowed Maya’s card at Costco…"
-            />
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
+        <div className="grid gap-1.5">
+          <Label htmlFor="due">Pay-back due</Label>
+          <Input
+            id="due"
+            type="date"
+            value={dueDate}
+            onChange={(event) => setDueDate(event.target.value)}
+          />
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={submit}>Save charge</Button>
-        </DialogFooter>
-      </DialogContent>
+        <div className="grid gap-2">
+          <Label>Split with</Label>
+          <div className="grid gap-2">
+            {state.people.map((person) => (
+              <label
+                key={person.id}
+                className="flex items-center justify-between rounded-lg border border-border px-2.5 py-2"
+              >
+                <span className="flex items-center gap-2">
+                  <PersonAvatar person={person} size="sm" />
+                  <span>
+                    {person.name}
+                    {person.id === state.currentUserId ? " · you" : ""}
+                  </span>
+                </span>
+                <Checkbox
+                  checked={splitWith.includes(person.id)}
+                  disabled={person.id === state.currentUserId}
+                  onCheckedChange={() => toggleSplit(person.id)}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {preview && (
+          <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
+            {preview.map((row) => (
+              <div
+                key={row.person?.id}
+                className="flex justify-between py-0.5"
+              >
+                <span>{row.person?.name}</span>
+                <span className="tabular-nums text-foreground">
+                  {formatMoney(row.amountCents, state.currency)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="grid gap-1.5">
+          <Label htmlFor="bill">Bill / receipt (optional)</Label>
+          <Input
+            id="bill"
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(event) =>
+              setBillFile(event.target.files?.[0] ?? null)
+            }
+          />
+          {billFile ? (
+            <p className="text-xs text-muted-foreground">{billFile.name}</p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor="notes">Note</Label>
+          <Textarea
+            id="notes"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Who ordered what, tip, etc."
+          />
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={submit} disabled={saving}>
+          {saving ? "Saving…" : "Create spend"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }

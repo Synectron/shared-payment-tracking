@@ -1,3 +1,8 @@
+/**
+ * Settora settlement ledger — proprietary calculation engine.
+ * Copyright (c) OpusKiln / Shubham Mishra. All rights reserved.
+ * Do not copy, redistribute, or reuse outside OpusKiln products without permission.
+ */
 import { daysBetween, todayIso } from "./money";
 import type {
   Expense,
@@ -32,7 +37,9 @@ export function sourceById(
 
 export function unpaidShares(expense: Expense): Share[] {
   return expense.shares.filter(
-    (share) => share.status === "unpaid" && share.personId !== expense.paidById
+    (share) =>
+      (share.status === "unpaid" || share.status === "pending") &&
+      share.personId !== expense.paidById
   );
 }
 

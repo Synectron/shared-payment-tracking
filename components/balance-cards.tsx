@@ -24,7 +24,7 @@ export function BalanceCards({
         </CardHeader>
         <CardContent>
           <p className="font-heading text-2xl tabular-nums">
-            {formatMoney(you.owedToYou)}
+            {formatMoney(you.owedToYou, state.currency)}
           </p>
         </CardContent>
       </Card>
@@ -36,7 +36,7 @@ export function BalanceCards({
         </CardHeader>
         <CardContent>
           <p className="font-heading text-2xl tabular-nums">
-            {formatMoney(you.youOwe)}
+            {formatMoney(you.youOwe, state.currency)}
           </p>
         </CardContent>
       </Card>
@@ -47,7 +47,7 @@ export function BalanceCards({
         <CardContent>
           <p className="font-heading text-2xl tabular-nums">
             {you.net >= 0 ? "+" : "−"}
-            {formatMoney(Math.abs(you.net))}
+            {formatMoney(Math.abs(you.net), state.currency)}
           </p>
         </CardContent>
       </Card>
@@ -86,7 +86,7 @@ export function BalanceCards({
                         <span className="font-medium">{from?.name}</span> owes{" "}
                         <span className="font-medium">{to?.name}</span>{" "}
                         <span className="tabular-nums font-semibold">
-                          {formatMoney(pair.amountCents)}
+                          {formatMoney(pair.amountCents, state.currency)}
                         </span>
                       </p>
                     </div>
