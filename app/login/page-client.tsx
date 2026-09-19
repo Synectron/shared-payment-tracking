@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
+import { Spinner } from "@/components/spinner";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
@@ -66,7 +67,14 @@ export default function LoginPage() {
               </div>
               {error ? <p className="text-sm text-destructive">{error}</p> : null}
               <Button type="submit" className="w-full" disabled={pending}>
-                {pending ? "Sending…" : "Email me a link"}
+                {pending ? (
+                  <>
+                    <Spinner className="text-primary-foreground" />
+                    Sending…
+                  </>
+                ) : (
+                  "Email me a link"
+                )}
               </Button>
             </form>
           )}

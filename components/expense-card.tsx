@@ -16,8 +16,9 @@ import {
   sourceById,
 } from "@/lib/ledger";
 import { formatDisplayDate, formatMoney, parseMoneyToCents, relativeDueLabel } from "@/lib/money";
-import { REPAY_LABELS, type Expense, type Person, type PaymentSource } from "@/lib/types";
+import type { Expense, Person, PaymentSource } from "@/lib/types";
 import type { PaidTarget } from "@/components/mark-paid-dialog";
+import { Spinner } from "@/components/spinner";
 import { useLedger } from "@/lib/ledger-store";
 
 export function ExpenseCard({
@@ -201,11 +202,16 @@ export function ExpenseCard({
                 onClick={submitMyShare}
                 disabled={declareSaving}
               >
-                {declareSaving
-                  ? "Saving…"
-                  : myShare?.status === "amount_pending"
-                    ? "Update share"
-                    : "Submit share"}
+                {declareSaving ? (
+                  <>
+                    <Spinner className="text-primary-foreground" />
+                    Saving…
+                  </>
+                ) : myShare?.status === "amount_pending" ? (
+                  "Update share"
+                ) : (
+                  "Submit share"
+                )}
               </Button>
             </div>
             {declareError ? (
@@ -256,13 +262,11 @@ export function ExpenseCard({
                       {share.status === "open"
                         ? "No share yet"
                         : formatMoney(share.amountCents, state.currency)}
-                      {share.status === "paid" && share.repaidWith
-                        ? ` · ${REPAY_LABELS[share.repaidWith]}`
-                        : share.status === "pending"
-                          ? " · awaiting payment approval"
-                          : share.status === "amount_pending"
-                            ? " · awaiting share approval"
-                            : ""}
+                      {share.status === "pending"
+                        ? " · awaiting payment approval"
+                        : share.status === "amount_pending"
+                          ? " · awaiting share approval"
+                          : ""}
                     </p>
                   </div>
                 </div>

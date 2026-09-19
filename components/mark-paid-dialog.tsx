@@ -13,6 +13,7 @@ import {
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import { personById, sourceById } from "@/lib/ledger";
+import { Spinner } from "@/components/spinner";
 
 const DEFAULT_REPAY_METHOD = "upi" as const;
 
@@ -133,7 +134,7 @@ export function MarkPaidDialog({
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
           {isPendingClaim && isReceiver ? (
@@ -143,9 +144,13 @@ export function MarkPaidDialog({
                 onClick={confirmReject}
                 disabled={pending}
               >
+                {pending ? <Spinner /> : null}
                 Reject
               </Button>
               <Button onClick={confirmApprove} disabled={pending}>
+                {pending ? (
+                  <Spinner className="text-primary-foreground" />
+                ) : null}
                 Approve
               </Button>
             </>
@@ -153,7 +158,14 @@ export function MarkPaidDialog({
             <Button disabled>Awaiting approval</Button>
           ) : (
             <Button onClick={confirmClaim} disabled={pending}>
-              Submit claim
+              {pending ? (
+                <>
+                  <Spinner className="text-primary-foreground" />
+                  Submitting…
+                </>
+              ) : (
+                "Submit claim"
+              )}
             </Button>
           )}
         </DialogFooter>

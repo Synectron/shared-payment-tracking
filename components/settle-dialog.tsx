@@ -14,6 +14,7 @@ import { monthBalancesForPerson, personById } from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import { formatMonthLabel } from "@/lib/month";
+import { Spinner } from "@/components/spinner";
 
 const DEFAULT_REPAY_METHOD = "upi" as const;
 
@@ -32,6 +33,7 @@ export function SettleDialog({
 }) {
   const { state, settleWith } = useLedger();
   const [message, setMessage] = useState("");
+  const [pending, setPending] = useState(false);
   const otherId = target?.otherId ?? null;
   const monthKey = target?.monthKey;
   const other = personById(state.people, otherId ?? "");
@@ -49,17 +51,23 @@ export function SettleDialog({
       : undefined;
 
   async function confirm() {
-    if (!otherId) return;
-    const count = await settleWith(otherId, DEFAULT_REPAY_METHOD, monthKey);
-    const scope = monthKey ? ` for ${formatMonthLabel(monthKey)}` : "";
-    setMessage(
-      count > 0
-        ? clearingMonth
-          ? `Submitted ${count} claim${count === 1 ? "" : "s"} to clear ${formatMonthLabel(monthKey!)} with ${other?.name}. They still need to approve.`
-          : `Submitted ${count} payment claim${count === 1 ? "" : "s"}${scope} for ${other?.name} to approve.`
-        : `No open shares you owe ${other?.name}${scope}. They must claim payments for what they owe you.`
-    );
-    if (count > 0) onClose();
+    if (!otherId || pending) return;
+    setPending(true);
+    setMessage("");
+    try {
+      const count = await settleWith(otherId, DEFAULT_REPAY_METHOD, monthKey);
+      const scope = monthKey ? ` for ${formatMonthLabel(monthKey)}` : "";
+      setMessage(
+        count > 0
+          ? clearingMonth
+            ? `Submitted ${count} claim${count === 1 ? "" : "s"} to clear ${formatMonthLabel(monthKey!)} with ${other?.name}. They still need to approve.`
+            : `Submitted ${count} payment claim${count === 1 ? "" : "s"}${scope} for ${other?.name} to approve.`
+          : `No open shares you owe ${other?.name}${scope}. They must claim payments for what they owe you.`
+      );
+      if (count > 0) onClose();
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -114,11 +122,20 @@ export function SettleDialog({
           <p className="text-sm text-muted-foreground">{message}</p>
         ) : null}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button onClick={confirm}>
-            {clearingMonth ? "Clear tab" : "Submit claims"}
+          <Button onClick={confirm} disabled={pending}>
+            {pending ? (
+              <>
+                <Spinner className="text-primary-foreground" />
+                {clearingMonth ? "Clearing…" : "Submitting…"}
+              </>
+            ) : clearingMonth ? (
+              "Clear tab"
+            ) : (
+              "Submit claims"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

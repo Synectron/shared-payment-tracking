@@ -20,6 +20,7 @@ import {
 import { useDialogs } from "@/components/dialogs-provider";
 import { PwaInstallButton } from "@/components/pwa";
 import { SiteFooter } from "@/components/site-footer";
+import { Spinner } from "@/components/spinner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useLedger } from "@/lib/ledger-store";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,7 @@ export function AppShell({
   const params = useParams<{ groupId: string }>();
   const router = useRouter();
   const groupId = params.groupId;
-  const { state, reminders, currentUser } = useLedger();
+  const { state, reminders, currentUser, pending } = useLedger();
   const { openAddExpense } = useDialogs();
   const isMonthlyTab = state.trackingMode === "monthly_tab";
   const addSpendLabel = isMonthlyTab ? "Add spend" : "New spend";
@@ -85,6 +86,12 @@ export function AppShell({
             })}
           </nav>
           <div className="flex items-center gap-2">
+            {pending ? (
+              <Spinner
+                className="size-3.5 opacity-80"
+                label="Saving changes"
+              />
+            ) : null}
             {groups.length > 0 ? (
               <Select
                 value={groupId}

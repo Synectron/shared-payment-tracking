@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { joinGroupByCodeValue } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/spinner";
 
 export function JoinButton({ code }: { code: string }) {
   const [error, setError] = useState("");
@@ -21,7 +22,14 @@ export function JoinButton({ code }: { code: string }) {
   return (
     <div className="space-y-3">
       <Button className="w-full" onClick={join} disabled={pending}>
-        {pending ? "Joining…" : "Join this group"}
+        {pending ? (
+          <>
+            <Spinner className="text-primary-foreground" />
+            Joining…
+          </>
+        ) : (
+          "Join this group"
+        )}
       </Button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>

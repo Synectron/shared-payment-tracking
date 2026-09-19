@@ -32,6 +32,7 @@ import {
 } from "@/lib/money";
 import { sourceById } from "@/lib/ledger";
 import { PersonAvatar } from "@/components/person-avatar";
+import { Spinner } from "@/components/spinner";
 import { currentMonthKey, monthRange } from "@/lib/month";
 
 export function AddExpenseDialog({
@@ -117,7 +118,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       return;
     }
     if (!sourceId) {
-      setError("Pick how you paid (card / UPI / utility).");
+      setError("Pick a card, UPI, or utility.");
       return;
     }
     if (effectiveSplitWith.length === 0) {
@@ -244,7 +245,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="grid gap-1.5">
-          <Label>How did you pay?</Label>
+          <Label>Paid from</Label>
           <Select value={sourceId} onValueChange={setSourceId}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Card / UPI / utility" />
@@ -418,7 +419,16 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           Cancel
         </Button>
         <Button onClick={submit} disabled={saving}>
-          {saving ? "Saving…" : isMonthlyTab ? "Add to tab" : "Create spend"}
+          {saving ? (
+            <>
+              <Spinner className="text-primary-foreground" />
+              Saving…
+            </>
+          ) : isMonthlyTab ? (
+            "Add to tab"
+          ) : (
+            "Create spend"
+          )}
         </Button>
       </DialogFooter>
     </DialogContent>

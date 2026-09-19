@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FlowTip } from "@/components/flow-tip";
 import { PersonAvatar } from "@/components/person-avatar";
+import { Spinner } from "@/components/spinner";
 import { updatePaymentContact } from "@/lib/actions";
 import { balancesForPerson } from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
@@ -252,7 +253,14 @@ export function PeopleView() {
                 required
               />
               <Button type="submit" disabled={sending} variant="secondary">
-                {sending ? "Sending…" : "Send invite"}
+                {sending ? (
+                  <>
+                    <Spinner />
+                    Sending…
+                  </>
+                ) : (
+                  "Send invite"
+                )}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -301,7 +309,14 @@ export function PeopleView() {
               />
             </div>
             <Button type="submit" size="sm" disabled={savingContact}>
-              {savingContact ? "Saving…" : "Save payment details"}
+              {savingContact ? (
+                <>
+                  <Spinner className="text-primary-foreground" />
+                  Saving…
+                </>
+              ) : (
+                "Save payment details"
+              )}
             </Button>
             <p className="text-xs text-muted-foreground">
               Tip: fill at least one field. Without it, friends have to ask you
