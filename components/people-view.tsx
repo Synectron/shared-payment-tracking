@@ -2,6 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PersonAvatar } from "@/components/person-avatar";
@@ -11,13 +20,19 @@ import { formatMoney } from "@/lib/money";
 import { useState } from "react";
 
 export function PeopleView() {
-  const { state, inviteLink, regenerateInviteCode, sendInviteEmail } =
+  const { state, inviteLink, regenerateInviteCode, sendInviteEmail, deleteGroup } =
     useLedger();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState("");
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const canDelete =
+    state.currentUserRole === "owner" ||
+    state.createdBy === state.currentUserId;
 
   async function copyLink() {
     await navigator.clipboard.writeText(inviteLink);
@@ -44,6 +59,17 @@ export function PeopleView() {
     }
     setInviteStatus(`Invite sent to ${inviteEmail}`);
     setInviteEmail("");
+  }
+
+  async function onDeleteGroup() {
+    setError("");
+    setDeleting(true);
+    const result = await deleteGroup();
+    setDeleting(false);
+    if (result) {
+      setError(result);
+      setDeleteOpen(false);
+    }
   }
 
   return (
@@ -157,6 +183,52 @@ export function PeopleView() {
           })}
         </div>
       )}
+
+      {canDelete ? (
+        <Card className="border-destructive/40">
+          <CardContent className="space-y-3 pt-4">
+            <p className="text-sm font-medium text-destructive">Danger zone</p>
+            <p className="text-sm text-muted-foreground">
+              Permanently delete this group and all of its expenses, shares, and
+              payment sources. This cannot be undone.
+            </p>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="destructive" size="sm">
+                  Delete group
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete {state.groupName}?</DialogTitle>
+                  <DialogDescription>
+                    All expenses, balances, and members will be removed. You
+                    will be taken back to your groups list.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDeleteOpen(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={onDeleteGroup}
+                    disabled={deleting}
+                  >
+                    {deleting ? "Deleting…" : "Delete permanently"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

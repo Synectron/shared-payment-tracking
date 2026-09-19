@@ -45,9 +45,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && path === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    const next = request.nextUrl.searchParams.get("next");
+    const dest =
+      next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    return NextResponse.redirect(new URL(dest, request.nextUrl.origin));
   }
 
   return supabaseResponse;

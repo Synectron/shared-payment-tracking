@@ -38,7 +38,7 @@ export default async function HomePage() {
               >
                 <span className="font-medium">{group.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {group.currency} · {group.inviteCode}
+                  {group.currency}
                 </span>
               </Link>
             </li>
@@ -77,12 +77,12 @@ export default async function HomePage() {
       <form action={joinGroupByCode} className="space-y-3 rounded-xl border p-4">
         <h2 className="font-heading text-lg">Join with code</h2>
         <div className="grid gap-1.5">
-          <Label htmlFor="code">Invite code</Label>
+          <Label htmlFor="code">Invite link or code</Label>
           <Input
             id="code"
             name="code"
             required
-            placeholder="e.g. a1b2c3d4"
+            placeholder="Paste link or code"
             className="font-mono"
           />
         </div>

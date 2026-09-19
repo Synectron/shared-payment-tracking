@@ -77,6 +77,8 @@ export type LedgerState = {
   groupName: string;
   inviteCode: string;
   currency: string;
+  createdBy: string;
+  currentUserRole: "owner" | "member";
   people: Person[];
   sources: PaymentSource[];
   expenses: Expense[];

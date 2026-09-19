@@ -1,8 +1,10 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { JoinButton } from "./join-button";
+import { JoinButton } from "@/components/join-button";
 
-export default async function JoinPage({
+/** Legacy invite URLs: /join/{code} → resolve group and send to group-scoped link. */
+export default async function LegacyJoinPage({
   params,
 }: {
   params: Promise<{ code: string }>;
@@ -15,6 +17,21 @@ export default async function JoinPage({
 
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(`/join/${code}`)}`);
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data: group } = await admin
+      .from("groups")
+      .select("id")
+      .eq("invite_code", code)
+      .maybeSingle();
+
+    if (group) {
+      redirect(`/join/${group.id}/${code}`);
+    }
+  } catch {
+    // Fall through to bare join UI if admin is unavailable
   }
 
   return (

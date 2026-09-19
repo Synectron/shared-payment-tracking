@@ -11,7 +11,7 @@ import {
   sendEmail,
 } from "@/lib/email";
 import { DEFAULT_CURRENCY, isSupportedCurrency } from "@/lib/money";
-import { getInviteLink, siteOrigin } from "@/lib/site";
+import { getInviteLink, parseInviteInput, siteOrigin } from "@/lib/site";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -134,13 +134,16 @@ export async function createGroup(formData: FormData): Promise<void> {
 }
 
 export async function joinGroupByCode(formData: FormData): Promise<void> {
-  const code = String(formData.get("code") ?? "").trim();
-  if (!code) return;
+  const raw = String(formData.get("code") ?? "").trim();
+  const parsed = parseInviteInput(raw);
+  if (!parsed?.code) return;
 
   const { supabase } = await requireUser();
   await ensureProfile();
 
-  const { data, error } = await supabase.rpc("join_group_by_code", { code });
+  const { data, error } = await supabase.rpc("join_group_by_code", {
+    code: parsed.code,
+  });
   if (error || !data) return;
   revalidatePath("/");
   redirect(`/g/${data}`);
@@ -167,6 +170,59 @@ export async function regenerateInviteCode(groupId: string) {
   return { ok: true as const, inviteCode: data as string };
 }
 
+export async function deleteGroup(groupId: string) {
+  const { supabase, user } = await requireUser();
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("id, created_by")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group) return { error: "Group not found." };
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const isOwner =
+    group.created_by === user.id || membership?.role === "owner";
+  if (!isOwner) return { error: "Only the group owner can delete this group." };
+
+  // Prefer RPC (ordered deletes + auth). Fall back to admin cascade if RPC missing.
+  const { error: rpcError } = await supabase.rpc("delete_group", {
+    gid: groupId,
+  });
+
+  if (rpcError) {
+    try {
+      const admin = createAdminClient();
+      // Order matters: expenses → payment_sources RESTRICT
+      await admin.from("expenses").delete().eq("group_id", groupId);
+      await admin.from("payment_sources").delete().eq("group_id", groupId);
+      await admin.from("group_members").delete().eq("group_id", groupId);
+      const { error: delErr } = await admin
+        .from("groups")
+        .delete()
+        .eq("id", groupId);
+      if (delErr) return { error: delErr.message };
+    } catch (err) {
+      return {
+        error:
+          err instanceof Error
+            ? err.message
+            : rpcError.message || "Could not delete group.",
+      };
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/g/${groupId}`);
+  redirect("/");
+}
+
 export async function sendGroupInviteEmail(groupId: string, email: string) {
   const to = email.trim().toLowerCase();
   if (!to) return { error: "Enter an email address." };
@@ -186,7 +242,7 @@ export async function sendGroupInviteEmail(groupId: string, email: string) {
     .eq("id", user.id)
     .maybeSingle();
 
-  const inviteLink = getInviteLink(group.invite_code);
+  const inviteLink = getInviteLink(group.id, group.invite_code);
   const inviterName = profile?.display_name || user.email || "A friend";
 
   const mailed = await sendEmail({

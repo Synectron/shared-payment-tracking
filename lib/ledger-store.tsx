@@ -19,6 +19,7 @@ import {
   rejectClaim as rejectClaimAction,
   regenerateInviteCode as regenerateInviteCodeAction,
   sendGroupInviteEmail as sendGroupInviteEmailAction,
+  deleteGroup as deleteGroupAction,
 } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -68,6 +69,7 @@ type LedgerContextValue = {
   settleWith: (otherId: string, method: RepayMethod) => Promise<number>;
   regenerateInviteCode: () => Promise<string | null>;
   sendInviteEmail: (email: string) => Promise<string | null>;
+  deleteGroup: () => Promise<string | null>;
 };
 
 const LedgerContext = createContext<LedgerContextValue | null>(null);
@@ -200,7 +202,9 @@ export function LedgerProvider({
     if (result.error) return result.error;
     if (result.inviteCode) {
       setState((current) => ({ ...current, inviteCode: result.inviteCode! }));
-      setLink(`${window.location.origin}/join/${result.inviteCode}`);
+      setLink(
+        `${window.location.origin}/join/${state.groupId}/${result.inviteCode}`
+      );
     }
     refresh();
     return null;
@@ -214,6 +218,12 @@ export function LedgerProvider({
     },
     [state.groupId]
   );
+
+  const deleteGroup = useCallback(async () => {
+    const result = await deleteGroupAction(state.groupId);
+    if (result?.error) return result.error;
+    return null;
+  }, [state.groupId]);
 
   const value = useMemo<LedgerContextValue>(() => {
     const currentUser = state.people.find(
@@ -236,6 +246,7 @@ export function LedgerProvider({
       settleWith,
       regenerateInviteCode,
       sendInviteEmail,
+      deleteGroup,
     };
   }, [
     state,
@@ -249,6 +260,7 @@ export function LedgerProvider({
     settleWith,
     regenerateInviteCode,
     sendInviteEmail,
+    deleteGroup,
   ]);
 
   return (

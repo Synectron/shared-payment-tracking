@@ -21,7 +21,7 @@ export default async function GroupLayout({
 
   if (!ledger) notFound();
 
-  const inviteLink = getInviteLink(ledger.inviteCode);
+  const inviteLink = getInviteLink(groupId, ledger.inviteCode);
 
   return (
     <TooltipProvider>

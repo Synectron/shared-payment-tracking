@@ -1,16 +1,18 @@
 -- Invite links via group invite_code (no email invites)
+create extension if not exists pgcrypto with schema extensions;
+
 alter table public.groups
   add column if not exists invite_code text;
 
 update public.groups
-set invite_code = lower(substr(encode(gen_random_bytes(6), 'hex'), 1, 8))
+set invite_code = lower(substr(encode(extensions.gen_random_bytes(6), 'hex'), 1, 8))
 where invite_code is null;
 
 alter table public.groups
   alter column invite_code set not null;
 
 alter table public.groups
-  alter column invite_code set default lower(substr(encode(gen_random_bytes(6), 'hex'), 1, 8));
+  alter column invite_code set default lower(substr(encode(extensions.gen_random_bytes(6), 'hex'), 1, 8));
 
 create unique index if not exists groups_invite_code_idx on public.groups (invite_code);
 
@@ -52,7 +54,7 @@ create or replace function public.regenerate_invite_code(gid uuid)
 returns text
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   new_code text;
@@ -61,7 +63,7 @@ begin
     raise exception 'Not allowed';
   end if;
 
-  new_code := lower(substr(encode(gen_random_bytes(6), 'hex'), 1, 8));
+  new_code := lower(substr(encode(extensions.gen_random_bytes(6), 'hex'), 1, 8));
   update public.groups set invite_code = new_code where id = gid;
   return new_code;
 end;

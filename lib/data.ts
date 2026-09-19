@@ -63,7 +63,7 @@ export async function loadGroupLedger(
 
   const { data: membership } = await supabase
     .from("group_members")
-    .select("user_id")
+    .select("user_id, role")
     .eq("group_id", groupId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -71,7 +71,7 @@ export async function loadGroupLedger(
 
   const { data: group } = await supabase
     .from("groups")
-    .select("id, name, invite_code, currency")
+    .select("id, name, invite_code, currency, created_by")
     .eq("id", groupId)
     .single();
   if (!group) return null;
@@ -173,6 +173,9 @@ export async function loadGroupLedger(
     groupName: group.name,
     inviteCode: group.invite_code,
     currency: (group.currency as string) ?? "INR",
+    createdBy: group.created_by as string,
+    currentUserRole:
+      membership.role === "owner" ? ("owner" as const) : ("member" as const),
     people,
     sources,
     expenses,
