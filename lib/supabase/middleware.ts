@@ -31,6 +31,9 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isPublic =
+    path === "/" ||
+    path === "/robots.txt" ||
+    path === "/sitemap.xml" ||
     path.startsWith("/login") ||
     path.startsWith("/auth") ||
     path.startsWith("/join");
