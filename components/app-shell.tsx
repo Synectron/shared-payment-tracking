@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   CreditCardIcon,
   LayoutDashboardIcon,
@@ -25,7 +26,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useLedger } from "@/lib/ledger-store";
 import { cn } from "@/lib/utils";
 import type { GroupSummary } from "@/lib/types";
-import { useRouter } from "next/navigation";
 
 export function AppShell({
   children,
@@ -42,6 +42,18 @@ export function AppShell({
   const { openAddExpense } = useDialogs();
   const isMonthlyTab = state.trackingMode === "monthly_tab";
   const addSpendLabel = isMonthlyTab ? "Add spend" : "New spend";
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    for (const href of [
+      `/g/${groupId}`,
+      `/g/${groupId}/expenses`,
+      `/g/${groupId}/cards`,
+      `/g/${groupId}/people`,
+    ]) {
+      router.prefetch(href);
+    }
+  }, [groupId, router]);
 
   const nav = [
     { href: `/g/${groupId}`, label: "Home", icon: LayoutDashboardIcon, exact: true },
@@ -53,6 +65,8 @@ export function AppShell({
     { href: `/g/${groupId}/cards`, label: "Sources", icon: CreditCardIcon },
     { href: `/g/${groupId}/people`, label: "People", icon: UsersIcon },
   ];
+
+  const tabNavigating = pendingHref != null && pendingHref !== pathname;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -69,15 +83,21 @@ export function AppShell({
               const active = item.exact
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
+              const navigating = pendingHref === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
+                  onClick={() => {
+                    if (!active) setPendingHref(item.href);
+                  }}
                   className={cn(
-                    "rounded-lg px-3 py-1.5 text-sm",
+                    "rounded-lg px-3 py-1.5 text-sm transition-opacity",
                     active
                       ? "bg-muted font-medium text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                    navigating && "opacity-70"
                   )}
                 >
                   {item.label}
@@ -86,10 +106,10 @@ export function AppShell({
             })}
           </nav>
           <div className="flex items-center gap-2">
-            {pending ? (
+            {pending || tabNavigating ? (
               <Spinner
                 className="size-3.5 opacity-80"
-                label="Saving changes"
+                label={tabNavigating ? "Loading tab" : "Saving changes"}
               />
             ) : null}
             {groups.length > 0 ? (
@@ -123,6 +143,7 @@ export function AppShell({
           <p className="mb-4 text-sm">
             <Link
               href={`/g/${groupId}`}
+              prefetch
               className="font-medium text-destructive underline-offset-4 hover:underline"
             >
               {reminders.length} missed payment
@@ -137,7 +158,14 @@ export function AppShell({
           </p>
           <PwaInstallButton className="hidden sm:block" />
         </div>
-        {children}
+        <div
+          className={cn(
+            "transition-opacity duration-150",
+            tabNavigating && "opacity-60"
+          )}
+        >
+          {children}
+        </div>
       </main>
 
       <div className="mx-auto w-full max-w-5xl px-4 pb-2 sm:hidden">
@@ -152,14 +180,20 @@ export function AppShell({
             const active = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href);
+            const navigating = pendingHref === item.href;
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
+                onClick={() => {
+                  if (!active) setPendingHref(item.href);
+                }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[11px]",
-                  active ? "text-foreground" : "text-muted-foreground"
+                  "flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[11px] transition-opacity",
+                  active ? "text-foreground" : "text-muted-foreground",
+                  navigating && "opacity-70"
                 )}
               >
                 <Icon className="size-4" />
