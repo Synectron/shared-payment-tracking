@@ -82,7 +82,7 @@ export function magicLinkEmailHtml(link: string) {
 ${ctaButton(link, "Sign in to Settora")}
 <tr>
   <td style="font-size:12px;color:#666;text-align:center;">
-    This link works once and expires soon. Didn’t ask for this? Safe to ignore.
+    This link works once and expires soon. Didn't ask for this? Safe to ignore.
   </td>
 </tr>
   `);
@@ -92,9 +92,9 @@ export function magicLinkEmailText() {
   return [
     "Sign in to Settora",
     "",
-    "Open this message in an email app that shows HTML, then tap “Sign in to Settora”.",
+    "Open this message in an email app that shows HTML, then tap \"Sign in to Settora\".",
     "",
-    "Didn’t ask for this? Safe to ignore.",
+    "Didn't ask for this? Safe to ignore.",
   ].join("\n");
 }
 
@@ -111,7 +111,7 @@ export function groupInviteEmailHtml(input: {
   return emailShell(`
 <tr>
   <td style="padding-bottom:8px;font-size:16px;text-align:center;">
-    <strong>${safeInviter}</strong> wants you in <strong>${safeName}</strong> on Settora.
+    <strong>${safeInviter}</strong> invited you to <strong>${safeName}</strong> on Settora.
   </td>
 </tr>
 ${ctaButton(input.inviteLink, "Join group")}
@@ -129,9 +129,9 @@ export function groupInviteEmailText(input: {
   inviterName: string;
 }) {
   return [
-    `${input.inviterName} wants you in ${input.groupName} on Settora.`,
+    `${input.inviterName} invited you to ${input.groupName} on Settora.`,
     "",
-    "Open this message in an email app that shows HTML, then tap “Join group”.",
+    'Open this message in an email app that shows HTML, then tap "Join group".',
     "",
     `Prefer a code? Use ${input.inviteCode}`,
   ].join("\n");
