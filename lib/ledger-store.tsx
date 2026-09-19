@@ -83,7 +83,11 @@ type LedgerContextValue = {
     expenseId: string,
     personId: string
   ) => Promise<string | null>;
-  settleWith: (otherId: string, method: RepayMethod) => Promise<number>;
+  settleWith: (
+    otherId: string,
+    method: RepayMethod,
+    monthKey?: string
+  ) => Promise<number>;
   regenerateInviteCode: () => Promise<string | null>;
   sendInviteEmail: (email: string) => Promise<string | null>;
   deleteGroup: () => Promise<string | null>;
@@ -246,8 +250,13 @@ export function LedgerProvider({
   );
 
   const settleWith = useCallback(
-    async (otherId: string, method: RepayMethod) => {
-      const result = await claimSettleAction(state.groupId, otherId, method);
+    async (otherId: string, method: RepayMethod, monthKey?: string) => {
+      const result = await claimSettleAction(
+        state.groupId,
+        otherId,
+        method,
+        monthKey
+      );
       refresh();
       return result.count ?? 0;
     },

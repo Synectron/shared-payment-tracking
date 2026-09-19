@@ -725,17 +725,20 @@ export async function rejectClaim(
 export async function claimSettleWith(
   groupId: string,
   otherId: string,
-  method: RepayMethod
+  method: RepayMethod,
+  monthKey?: string
 ) {
   const { supabase, user } = await requireUser();
 
   const { data: expenses } = await supabase
     .from("expenses")
-    .select("id, paid_by_id, shares(id, person_id, status)")
+    .select("id, paid_by_id, date, shares(id, person_id, status)")
     .eq("group_id", groupId);
 
   let count = 0;
   for (const expense of expenses ?? []) {
+    if (monthKey && String(expense.date).slice(0, 7) !== monthKey) continue;
+
     const shares = (expense.shares ?? []) as Array<{
       id: string;
       person_id: string;

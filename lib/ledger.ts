@@ -3,6 +3,7 @@
  * Copyright (c) OpusKiln / Shubham Mishra. All rights reserved.
  * Do not copy, redistribute, or reuse outside OpusKiln products without permission.
  */
+import { expenseInMonth, type MonthKey } from "./month";
 import { daysBetween, todayIso } from "./money";
 import type {
   Expense,
@@ -128,6 +129,36 @@ export function balancesForPerson(state: LedgerState, personId: string) {
     .filter((pair) => pair.fromId === personId)
     .reduce((sum, pair) => sum + pair.amountCents, 0);
   return { owedToYou, youOwe, net: owedToYou - youOwe, pairs };
+}
+
+/** Ledger view limited to spends whose expense date falls in the month. */
+export function ledgerForMonth(
+  state: LedgerState,
+  monthKey: MonthKey
+): LedgerState {
+  return {
+    ...state,
+    expenses: state.expenses.filter((expense) =>
+      expenseInMonth(expense, monthKey)
+    ),
+  };
+}
+
+export function monthSpendTotal(
+  state: LedgerState,
+  monthKey: MonthKey
+): number {
+  return state.expenses
+    .filter((expense) => expenseInMonth(expense, monthKey))
+    .reduce((sum, expense) => sum + expense.amountCents, 0);
+}
+
+export function monthBalancesForPerson(
+  state: LedgerState,
+  monthKey: MonthKey,
+  personId: string
+) {
+  return balancesForPerson(ledgerForMonth(state, monthKey), personId);
 }
 
 export function sourceSpend(state: LedgerState, sourceId: string): number {

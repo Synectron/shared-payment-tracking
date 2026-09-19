@@ -112,8 +112,8 @@ export function PeopleView() {
       <div>
         <h1 className="font-heading text-3xl tracking-tight">People</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Invite friends, then add your UPI or phone so they know where to send
-          money when they owe you.
+          Invite her, add your UPI or phone, keep logging spends through the
+          month — settle before month end from Home.
         </p>
       </div>
 
@@ -123,9 +123,8 @@ export function PeopleView() {
           (or bank transfer) using the person&apos;s UPI ID or phone below.
         </p>
         <p>
-          After you send the money, open the spend and tap Claim paid. The
-          person who created the spend has to approve before it counts as
-          settled.
+          After you send the money, Claim paid on the spend — or use Settle this
+          month on Home. The creator still approves before it counts.
         </p>
       </FlowTip>
 

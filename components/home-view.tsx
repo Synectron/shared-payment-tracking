@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { BalanceCards } from "@/components/balance-cards";
 import { ExpenseCard } from "@/components/expense-card";
 import { FlowTip } from "@/components/flow-tip";
+import { MonthPeriodPanel } from "@/components/month-period-panel";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { useDialogs } from "@/components/dialogs-provider";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,10 @@ export function HomeView() {
   const { groupId } = useParams<{ groupId: string }>();
   const { requestMarkPaid, requestSettle, openAddExpense } = useDialogs();
   const recent = [...state.expenses]
-    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
+    )
     .slice(0, 4);
 
   return (
@@ -27,8 +31,8 @@ export function HomeView() {
             Group spends
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Paid for the group? Log a spend. You&apos;re the receiver: friends
-            add shares or claim paybacks, you approve.
+            Paid for the group? Log a spend. Keep adding through the month —
+            settle before it ends.
           </p>
         </div>
         <Button className="sm:hidden" onClick={openAddExpense}>
@@ -36,21 +40,14 @@ export function HomeView() {
         </Button>
       </div>
 
-      <FlowTip title="How Settora works">
+      <FlowTip title="Monthly rhythm">
         <p>
-          1. Invite friends on People, and add your UPI ID or phone so they can
-          pay you.
-        </p>
-        <p>
-          2. Whoever paid logs a spend. Choose equal split, or let each member
-          submit their own share (you or the group owner approve those amounts).
-        </p>
-        <p>
-          3. To pay back: open People, copy their UPI or phone, send money in
-          your UPI app, then Claim paid on the spend. Nothing counts until the
-          creator approves.
+          Invite her on People. She adds spends as they happen. Before month
+          end, settle what&apos;s still open — claims still need approval.
         </p>
       </FlowTip>
+
+      <MonthPeriodPanel />
 
       <RemindersPanel onMarkPaid={requestMarkPaid} />
       <BalanceCards onSettle={requestSettle} />
@@ -66,8 +63,8 @@ export function HomeView() {
           <div className="rounded-xl border border-dashed px-4 py-8 text-center space-y-2">
             <p className="font-medium">No spends yet</p>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              After you pay for dinner or a trip, tap New spend. Friends join
-              from People, then settle against your UPI or phone.
+              Invite her on People, then log dinner or trips as you go. Settle
+              the month before it ends — UPI details live on People too.
             </p>
             <Button size="sm" onClick={openAddExpense}>
               New spend
