@@ -10,18 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { RepayMethodSelect } from "@/components/repay-method-select";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import { personById, sourceById } from "@/lib/ledger";
-import { REPAY_LABELS, type RepayMethod } from "@/lib/types";
+import type { RepayMethod } from "@/lib/types";
 
 export type PaidTarget = {
   expenseId: string;
@@ -136,24 +129,12 @@ export function MarkPaidDialog({
         ) : null}
 
         {!isPendingClaim ? (
-          <div className="grid gap-1.5">
-            <Label>How was it paid?</Label>
-            <Select
-              value={method}
-              onValueChange={(value) => setMethod(value as RepayMethod)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(REPAY_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <RepayMethodSelect
+            id="claim-repay-method"
+            label="How was it paid?"
+            value={method}
+            onChange={setMethod}
+          />
         ) : null}
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
