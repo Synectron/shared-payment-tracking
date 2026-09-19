@@ -14,12 +14,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PersonAvatar } from "@/components/person-avatar";
+import { updatePaymentContact } from "@/lib/actions";
 import { balancesForPerson } from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export function PeopleView() {
+  const router = useRouter();
   const { state, inviteLink, regenerateInviteCode, sendInviteEmail, deleteGroup } =
     useLedger();
   const [copied, setCopied] = useState(false);
@@ -29,6 +32,16 @@ export function PeopleView() {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const me = state.people.find((person) => person.id === state.currentUserId);
+  const [upiId, setUpiId] = useState(me?.upiId ?? "");
+  const [phone, setPhone] = useState(me?.phone ?? "");
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactStatus, setContactStatus] = useState("");
+
+  useEffect(() => {
+    setUpiId(me?.upiId ?? "");
+    setPhone(me?.phone ?? "");
+  }, [me?.upiId, me?.phone]);
 
   const canDelete =
     state.currentUserRole === "owner" ||
@@ -70,6 +83,27 @@ export function PeopleView() {
       setError(result);
       setDeleteOpen(false);
     }
+  }
+
+  async function onSavePaymentContact(e: React.FormEvent) {
+    e.preventDefault();
+    setContactStatus("");
+    setError("");
+    setSavingContact(true);
+    const formData = new FormData();
+    formData.set("group_id", state.groupId);
+    formData.set("upi_id", upiId);
+    formData.set("phone", phone);
+    const result = await updatePaymentContact(formData);
+    setSavingContact(false);
+    if (result.error) {
+      setContactStatus("");
+      setError(result.error);
+      return;
+    }
+    setError("");
+    setContactStatus("Payment details saved");
+    router.refresh();
   }
 
   return (
@@ -128,6 +162,50 @@ export function PeopleView() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="space-y-3 pt-4">
+          <div>
+            <p className="text-sm font-medium">Your payment details</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              UPI ID and phone are visible to everyone in this group so they can
+              pay you back.
+            </p>
+          </div>
+          <form onSubmit={onSavePaymentContact} className="space-y-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="my-upi">UPI ID</Label>
+              <Input
+                id="my-upi"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                placeholder="name@okaxis"
+                autoComplete="off"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="my-phone">Phone</Label>
+              <Input
+                id="my-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91…"
+                autoComplete="tel"
+              />
+            </div>
+            <Button type="submit" size="sm" disabled={savingContact}>
+              {savingContact ? "Saving…" : "Save payment details"}
+            </Button>
+            {contactStatus ? (
+              <p className="text-sm text-primary">{contactStatus}</p>
+            ) : null}
+            {error && !inviteStatus ? (
+              <p className="text-sm text-destructive">{error}</p>
+            ) : null}
+          </form>
+        </CardContent>
+      </Card>
+
       {state.people.length === 0 ? (
         <div className="rounded-xl border border-dashed px-4 py-10 text-center">
           <p className="font-medium">No one in the group yet</p>
@@ -155,9 +233,24 @@ export function PeopleView() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {cards.length === 0
-                        ? "No card/UPI on file"
+                        ? "No card/UPI source on file"
                         : cards.map((card) => card.name).join(" · ")}
                     </p>
+                    {person.upiId || person.phone ? (
+                      <p className="mt-1 text-xs text-foreground/80">
+                        {person.upiId ? (
+                          <span className="font-mono">{person.upiId}</span>
+                        ) : null}
+                        {person.upiId && person.phone ? " · " : null}
+                        {person.phone ? <span>{person.phone}</span> : null}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {person.id === state.currentUserId
+                          ? "Add your UPI or phone above"
+                          : "No payment contact yet"}
+                      </p>
+                    )}
                     <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <dt className="text-xs text-muted-foreground">

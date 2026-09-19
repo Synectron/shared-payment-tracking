@@ -78,7 +78,7 @@ export async function loadGroupLedger(
 
   const { data: members } = await supabase
     .from("group_members")
-    .select("user_id, profiles(id, display_name, color, email)")
+    .select("user_id, profiles(id, display_name, color, email, upi_id, phone)")
     .eq("group_id", groupId);
 
   const people: Person[] = (members ?? []).flatMap((m) => {
@@ -87,6 +87,8 @@ export async function loadGroupLedger(
       display_name: string;
       color: string;
       email: string;
+      upi_id: string | null;
+      phone: string | null;
     } | null;
     if (!profile) return [];
     return [
@@ -95,6 +97,8 @@ export async function loadGroupLedger(
         name: profile.display_name,
         color: profile.color,
         email: profile.email,
+        upiId: profile.upi_id ?? undefined,
+        phone: profile.phone ?? undefined,
       },
     ];
   });

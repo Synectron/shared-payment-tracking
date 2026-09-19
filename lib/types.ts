@@ -17,6 +17,8 @@ export type Person = {
   name: string;
   color: string;
   email?: string;
+  upiId?: string;
+  phone?: string;
 };
 
 export type PaymentSource = {

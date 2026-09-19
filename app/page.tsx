@@ -5,6 +5,7 @@ import { listMyGroups } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SiteFooter } from "@/components/site-footer";
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from "@/lib/money";
 
 export default async function HomePage() {
@@ -71,6 +72,28 @@ export default async function HomePage() {
             ))}
           </select>
         </div>
+        <div className="grid gap-1.5 border-t pt-3">
+          <p className="text-sm font-medium">Your payment contact</p>
+          <p className="text-xs text-muted-foreground">
+            Optional now — members will see these when settling up. You can edit
+            them later on People.
+          </p>
+          <Label htmlFor="upi_id">UPI ID</Label>
+          <Input
+            id="upi_id"
+            name="upi_id"
+            placeholder="name@okaxis"
+            autoComplete="off"
+          />
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            placeholder="+91…"
+            autoComplete="tel"
+          />
+        </div>
         <Button type="submit">Create group</Button>
       </form>
 
@@ -90,6 +113,8 @@ export default async function HomePage() {
           Join group
         </Button>
       </form>
+
+      <SiteFooter className="-mx-4 mt-4 border-t-0" />
     </div>
   );
 }

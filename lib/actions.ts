@@ -109,6 +109,28 @@ export async function signOut() {
   redirect("/login");
 }
 
+function normalizePaymentContact(formData: FormData) {
+  const upiId = String(formData.get("upi_id") ?? "").trim() || null;
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  return { upiId, phone };
+}
+
+export async function updatePaymentContact(formData: FormData) {
+  const { upiId, phone } = normalizePaymentContact(formData);
+  const groupId = String(formData.get("group_id") ?? "").trim();
+  const { supabase, user } = await requireUser();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ upi_id: upiId, phone })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+  if (groupId) revalidatePath(`/g/${groupId}/people`);
+  revalidatePath("/");
+  return { ok: true as const };
+}
+
 export async function createGroup(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "").trim();
   const currencyRaw = String(formData.get("currency") ?? DEFAULT_CURRENCY)
@@ -121,6 +143,14 @@ export async function createGroup(formData: FormData): Promise<void> {
 
   const { supabase, user } = await requireUser();
   await ensureProfile();
+
+  const { upiId, phone } = normalizePaymentContact(formData);
+  if (upiId || phone) {
+    await supabase
+      .from("profiles")
+      .update({ upi_id: upiId, phone })
+      .eq("id", user.id);
+  }
 
   const { data, error } = await supabase
     .from("groups")
