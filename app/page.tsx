@@ -45,14 +45,7 @@ export default async function HomePage() {
                 href={`/g/${group.id}`}
                 className="flex items-center justify-between rounded-xl border px-4 py-3 hover:bg-muted/50"
               >
-                <span className="min-w-0">
-                  <span className="font-medium">{group.name}</span>
-                  {group.trackingMode === "monthly_tab" ? (
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Monthly tab
-                    </span>
-                  ) : null}
-                </span>
+                <span className="min-w-0 font-medium">{group.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
                   {group.currency}
                 </span>
@@ -86,25 +79,6 @@ export default async function HomePage() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="tracking_mode">Tracking style</Label>
-          <select
-            id="tracking_mode"
-            name="tracking_mode"
-            defaultValue="monthly_tab"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          >
-            <option value="monthly_tab">
-              Monthly tab (settle at month end)
-            </option>
-            <option value="standard">Standard shared group</option>
-          </select>
-          <p className="text-xs text-muted-foreground">
-            Monthly tab is a running account for the month: log spends as you
-            go, clear the net before month end. Standard keeps equal-split and
-            open-share per spend.
-          </p>
         </div>
         <div className="grid gap-1.5 border-t pt-3">
           <p className="text-sm font-medium">Your payment contact</p>

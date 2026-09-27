@@ -10,7 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { monthBalancesForPerson, personById } from "@/lib/ledger";
+import {
+  monthBalancesForPerson,
+  personById,
+  tabBalancesForPerson,
+} from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import { formatMonthLabel } from "@/lib/month";
@@ -22,6 +26,8 @@ export type SettleTarget = {
   otherId: string;
   /** When set, only claim unpaid shares for expenses in this YYYY-MM month. */
   monthKey?: string;
+  /** Only claim shares on the group's monthly tab (requires monthKey). */
+  tabOnly?: boolean;
 };
 
 export function SettleDialog({
@@ -38,12 +44,14 @@ export function SettleDialog({
   const monthKey = target?.monthKey;
   const other = personById(state.people, otherId ?? "");
   const you = personById(state.people, state.currentUserId);
-  const isMonthlyTab = state.trackingMode === "monthly_tab";
-  const clearingMonth = Boolean(monthKey && isMonthlyTab);
+  const clearingMonth = Boolean(monthKey && target?.tabOnly);
+  const balancesFor = clearingMonth
+    ? tabBalancesForPerson
+    : monthBalancesForPerson;
 
   const monthNet =
     otherId && monthKey
-      ? monthBalancesForPerson(state, monthKey, state.currentUserId).pairs.find(
+      ? balancesFor(state, monthKey, state.currentUserId).pairs.find(
           (pair) =>
             (pair.fromId === state.currentUserId && pair.toId === otherId) ||
             (pair.toId === state.currentUserId && pair.fromId === otherId)
@@ -55,14 +63,19 @@ export function SettleDialog({
     setPending(true);
     setMessage("");
     try {
-      const count = await settleWith(otherId, DEFAULT_REPAY_METHOD, monthKey);
+      const count = await settleWith(
+        otherId,
+        DEFAULT_REPAY_METHOD,
+        monthKey,
+        clearingMonth
+      );
       const scope = monthKey ? ` for ${formatMonthLabel(monthKey)}` : "";
       setMessage(
         count > 0
           ? clearingMonth
             ? `Submitted ${count} claim${count === 1 ? "" : "s"} to clear ${formatMonthLabel(monthKey!)} with ${other?.name}. They still need to approve.`
             : `Submitted ${count} payment claim${count === 1 ? "" : "s"}${scope} for ${other?.name} to approve.`
-          : `No open shares you owe ${other?.name}${scope}. They must claim payments for what they owe you.`
+          : `No open ${clearingMonth ? "tab " : ""}shares you owe ${other?.name}${scope}. They must claim payments for what they owe you.`
       );
       if (count > 0) onClose();
     } finally {
@@ -84,7 +97,7 @@ export function SettleDialog({
         <DialogHeader>
           <DialogTitle>
             {clearingMonth
-              ? `Clear ${formatMonthLabel(monthKey!)}`
+              ? `Clear ${formatMonthLabel(monthKey!)} tab`
               : monthKey
                 ? `Settle ${formatMonthLabel(monthKey)}`
                 : "Settle up"}
@@ -97,7 +110,7 @@ export function SettleDialog({
                 {monthNet && monthNet.fromId === state.currentUserId ? (
                   <>
                     {" "}
-                    Net this month:{" "}
+                    Net on the tab:{" "}
                     {formatMoney(monthNet.amountCents, state.currency)}.
                   </>
                 ) : null}

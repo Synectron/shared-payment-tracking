@@ -41,8 +41,7 @@ export function AppShell({
   const groupId = params.groupId;
   const { state, reminders, currentUser, pending } = useLedger();
   const { openAddExpense } = useDialogs();
-  const isMonthlyTab = state.trackingMode === "monthly_tab";
-  const addSpendLabel = isMonthlyTab ? "Add spend" : "New spend";
+  const addSpendLabel = "New spend";
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,7 +59,7 @@ export function AppShell({
     { href: `/g/${groupId}`, label: "Home", icon: LayoutDashboardIcon, exact: true },
     {
       href: `/g/${groupId}/expenses`,
-      label: isMonthlyTab ? "Tab" : "Spends",
+      label: "Spends",
       icon: ReceiptIcon,
     },
     { href: `/g/${groupId}/cards`, label: "Sources", icon: CreditCardIcon },

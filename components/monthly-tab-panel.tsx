@@ -10,11 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useDialogs } from "@/components/dialogs-provider";
-import {
-  monthBalancesForPerson,
-  monthSpendTotal,
-  personById,
-} from "@/lib/ledger";
+import { ledgerForTab, personById, tabBalancesForPerson } from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
 import {
@@ -26,19 +22,16 @@ import {
   type MonthKey,
 } from "@/lib/month";
 
-export function MonthPeriodPanel() {
+export function MonthlyTabPanel() {
   const { state } = useLedger();
-  const { requestSettle } = useDialogs();
+  const { requestSettle, openAddToTab } = useDialogs();
   const active = currentMonthKey();
   const [monthKey, setMonthKey] = useState<MonthKey>(active);
   const viewingCurrent = isCurrentMonth(monthKey, active);
 
-  const totalSpent = monthSpendTotal(state, monthKey);
-  const balances = monthBalancesForPerson(
-    state,
-    monthKey,
-    state.currentUserId
-  );
+  const tabSpends = ledgerForTab(state, monthKey).expenses;
+  const tabTotal = tabSpends.reduce((sum, e) => sum + e.amountCents, 0);
+  const balances = tabBalancesForPerson(state, monthKey, state.currentUserId);
   const yourPairs = balances.pairs.filter(
     (pair) =>
       pair.fromId === state.currentUserId || pair.toId === state.currentUserId
@@ -47,21 +40,17 @@ export function MonthPeriodPanel() {
     (pair) => pair.fromId === state.currentUserId
   );
 
-  function goPrev() {
-    setMonthKey((current) => shiftMonth(current, -1));
-  }
-
   function goNext() {
     const next = shiftMonth(monthKey, 1);
     if (next <= active) setMonthKey(next);
   }
 
-  function settleMonth() {
+  function clearTab() {
     if (youOwePairs.length === 0) return;
     const top = [...youOwePairs].sort(
       (a, b) => b.amountCents - a.amountCents
     )[0];
-    requestSettle(top.toId, monthKey);
+    requestSettle(top.toId, monthKey, true);
   }
 
   return (
@@ -70,12 +59,12 @@ export function MonthPeriodPanel() {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <CardTitle className="font-heading text-xl tracking-tight">
-              {formatMonthLabel(monthKey)} · all spends
+              Monthly tab · {formatMonthLabel(monthKey)}
             </CardTitle>
             <CardDescription className="mt-1">
               {viewingCurrent
-                ? "Everything logged this month, tab included. Settle before the month ends."
-                : "Past month, summary only. Open shares still settle the usual way."}
+                ? "The group's running account. Everyone shares tab spends equally; clear it before month end."
+                : "Past month's tab. You can still clear leftover claims."}
             </CardDescription>
           </div>
           <div className="flex items-center gap-1">
@@ -83,7 +72,7 @@ export function MonthPeriodPanel() {
               type="button"
               size="xs"
               variant="outline"
-              onClick={goPrev}
+              onClick={() => setMonthKey((current) => shiftMonth(current, -1))}
               aria-label="Previous month"
             >
               ←
@@ -102,7 +91,7 @@ export function MonthPeriodPanel() {
         </div>
         {viewingCurrent ? (
           <p className="text-xs text-muted-foreground">
-            {settleCountdownLabel(monthKey)}
+            {settleCountdownLabel(monthKey, undefined, { monthlyTab: true })}
           </p>
         ) : null}
       </CardHeader>
@@ -110,10 +99,11 @@ export function MonthPeriodPanel() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <p className="text-xs text-muted-foreground">
-              Total spent
+              On the tab · {tabSpends.length}{" "}
+              {tabSpends.length === 1 ? "spend" : "spends"}
             </p>
             <p className="font-heading text-lg tabular-nums">
-              {formatMoney(totalSpent, state.currency)}
+              {formatMoney(tabTotal, state.currency)}
             </p>
           </div>
           <div>
@@ -147,13 +137,13 @@ export function MonthPeriodPanel() {
                       {formatMoney(pair.amountCents, state.currency)}
                     </span>
                   </span>
-                  {viewingCurrent && pair.fromId === state.currentUserId ? (
+                  {pair.fromId === state.currentUserId ? (
                     <Button
                       size="xs"
                       variant="outline"
-                      onClick={() => requestSettle(pair.toId, monthKey)}
+                      onClick={() => requestSettle(pair.toId, monthKey, true)}
                     >
-                      Settle
+                      Clear
                     </Button>
                   ) : null}
                 </li>
@@ -162,19 +152,24 @@ export function MonthPeriodPanel() {
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {totalSpent === 0
+            {tabTotal === 0
               ? viewingCurrent
-                ? "No spends this month yet. Invite a friend on People, log what you pay, and settle before month end."
-                : "No spends logged this month."
-              : "This month’s shares are even. Nothing left to settle."}
+                ? "Nothing on the tab yet. Add groceries, rent or anything the whole group shares."
+                : "Nothing was on the tab this month."
+              : "This month's tab is even. Nothing left to clear."}
           </p>
         )}
 
-        {viewingCurrent && youOwePairs.length > 0 ? (
-          <Button onClick={settleMonth} className="w-full sm:w-auto">
-            Settle this month
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {viewingCurrent ? (
+            <Button variant="outline" onClick={openAddToTab}>
+              Add to tab
+            </Button>
+          ) : null}
+          {youOwePairs.length > 0 ? (
+            <Button onClick={clearTab}>Clear tab</Button>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );

@@ -10,12 +10,7 @@ import type {
   RepayMethod,
   ShareStatus,
   SourceKind,
-  TrackingMode,
 } from "@/lib/types";
-
-function parseTrackingMode(value: unknown): TrackingMode {
-  return value === "monthly_tab" ? "monthly_tab" : "standard";
-}
 
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
@@ -33,7 +28,7 @@ export const listMyGroups = cache(async (): Promise<GroupSummary[]> => {
   const { data: memberships } = await supabase
     .from("group_members")
     .select(
-      "group_id, groups(id, name, invite_code, currency, tracking_mode, created_by)"
+      "group_id, groups(id, name, invite_code, currency, created_by)"
     )
     .eq("user_id", user.id);
 
@@ -44,7 +39,6 @@ export const listMyGroups = cache(async (): Promise<GroupSummary[]> => {
         name: string;
         invite_code: string;
         currency: string;
-        tracking_mode: string | null;
         created_by: string;
       } | null;
       if (!group) return null;
@@ -53,7 +47,6 @@ export const listMyGroups = cache(async (): Promise<GroupSummary[]> => {
         name: group.name,
         inviteCode: group.invite_code,
         currency: group.currency ?? "INR",
-        trackingMode: parseTrackingMode(group.tracking_mode),
         createdBy: group.created_by,
       } satisfies GroupSummary;
     })
@@ -82,7 +75,7 @@ export const loadGroupLedger = cache(
     ] = await Promise.all([
       supabase
         .from("groups")
-        .select("id, name, invite_code, currency, tracking_mode, created_by")
+        .select("id, name, invite_code, currency, created_by")
         .eq("id", groupId)
         .single(),
       supabase
@@ -155,6 +148,7 @@ export const loadGroupLedger = cache(
         billPaths,
         billUrls,
         shareMode: (e.share_mode as Expense["shareMode"]) ?? "assigned",
+        onTab: Boolean(e.on_tab),
         createdAt: String(e.created_at).slice(0, 10),
         shares: ((e.shares as Array<Record<string, unknown>>) ?? []).map(
           (s) => ({
@@ -192,7 +186,6 @@ export const loadGroupLedger = cache(
       groupName: group.name,
       inviteCode: group.invite_code,
       currency: (group.currency as string) ?? "INR",
-      trackingMode: parseTrackingMode(group.tracking_mode),
       createdBy: group.created_by as string,
       currentUserRole:
         membership.role === "owner" ? ("owner" as const) : ("member" as const),

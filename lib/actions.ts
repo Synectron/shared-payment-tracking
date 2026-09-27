@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { RepayMethod, SourceKind, TrackingMode } from "@/lib/types";
+import type { RepayMethod, SourceKind } from "@/lib/types";
 import {
   groupInviteEmailHtml,
   groupInviteEmailText,
@@ -14,10 +14,7 @@ import {
 } from "@/lib/email";
 import { DEFAULT_CURRENCY, isSupportedCurrency } from "@/lib/money";
 import { getInviteLink, parseInviteInput, siteOrigin } from "@/lib/site";
-
-function parseTrackingMode(value: unknown): TrackingMode {
-  return value === "monthly_tab" ? "monthly_tab" : "standard";
-}
+import { monthKeyFromIso, monthRange } from "@/lib/month";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -145,7 +142,6 @@ export async function createGroup(formData: FormData): Promise<void> {
   const currency = isSupportedCurrency(currencyRaw)
     ? currencyRaw
     : DEFAULT_CURRENCY;
-  const trackingMode = parseTrackingMode(formData.get("tracking_mode"));
   if (!name) return;
 
   const { supabase, user } = await requireUser();
@@ -182,7 +178,6 @@ export async function createGroup(formData: FormData): Promise<void> {
       name,
       created_by: user.id,
       currency,
-      tracking_mode: trackingMode,
     })
     .select("id")
     .single();
@@ -190,45 +185,6 @@ export async function createGroup(formData: FormData): Promise<void> {
   if (error || !data) return;
   revalidatePath("/");
   redirect(`/g/${data.id}`);
-}
-
-export async function updateGroupTrackingMode(
-  groupId: string,
-  trackingMode: TrackingMode
-) {
-  const mode = parseTrackingMode(trackingMode);
-  const { supabase, user } = await requireUser();
-
-  const { data: group } = await supabase
-    .from("groups")
-    .select("id, created_by")
-    .eq("id", groupId)
-    .maybeSingle();
-  if (!group) return { error: "Group not found." };
-
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("role")
-    .eq("group_id", groupId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const isOwner =
-    group.created_by === user.id || membership?.role === "owner";
-  if (!isOwner) {
-    return { error: "Only the group owner can change tracking mode." };
-  }
-
-  const { error } = await supabase
-    .from("groups")
-    .update({ tracking_mode: mode })
-    .eq("id", groupId);
-
-  if (error) return { error: error.message };
-  revalidatePath(`/g/${groupId}`);
-  revalidatePath(`/g/${groupId}/people`);
-  revalidatePath("/");
-  return { ok: true as const };
 }
 
 export async function joinGroupByCode(formData: FormData): Promise<void> {
@@ -400,25 +356,22 @@ export async function addExpense(
     billPaths?: string[];
     /** assigned = equal split now; open = members declare amounts later */
     shareMode?: "assigned" | "open";
+    /** Goes on the group's monthly tab: whole group, equal split, due month end */
+    onTab?: boolean;
   }
 ) {
   const { supabase, user } = await requireUser();
   // Creator of the spend is always the receiver / approver
   const paidById = user.id;
+  const onTab = Boolean(input.onTab);
 
-  const { data: groupMeta } = await supabase
-    .from("groups")
-    .select("tracking_mode")
-    .eq("id", groupId)
-    .maybeSingle();
-  const isMonthlyTab = groupMeta?.tracking_mode === "monthly_tab";
-
-  // Monthly tab always equal-splits; open-share is standard-mode only
   const shareMode =
-    isMonthlyTab || input.shareMode !== "open" ? "assigned" : "open";
+    onTab || input.shareMode !== "open" ? "assigned" : "open";
+  const dueDate = onTab
+    ? monthRange(monthKeyFromIso(input.date)).end
+    : input.dueDate;
   let splitWith = input.splitWith.filter(Boolean);
-  if (isMonthlyTab) {
-    // Default: whole group on the month tab
+  if (onTab) {
     const { data: members } = await supabase
       .from("group_members")
       .select("user_id")
@@ -438,13 +391,14 @@ export async function addExpense(
       title: input.title.trim(),
       amount_cents: input.amountCents,
       date: input.date,
-      due_date: input.dueDate,
+      due_date: dueDate,
       paid_by_id: paidById,
       created_by: paidById,
       used_by_id: input.usedById ?? paidById,
       notes: input.notes?.trim() || null,
       bill_paths: input.billPaths ?? [],
       share_mode: shareMode,
+      on_tab: onTab,
     })
     .select("id")
     .single();
@@ -813,18 +767,20 @@ export async function claimSettleWith(
   groupId: string,
   otherId: string,
   method: RepayMethod,
-  monthKey?: string
+  monthKey?: string,
+  tabOnly?: boolean
 ) {
   const { supabase, user } = await requireUser();
 
   const { data: expenses } = await supabase
     .from("expenses")
-    .select("id, paid_by_id, date, shares(id, person_id, status)")
+    .select("id, paid_by_id, date, on_tab, shares(id, person_id, status)")
     .eq("group_id", groupId);
 
   let count = 0;
   for (const expense of expenses ?? []) {
     if (monthKey && String(expense.date).slice(0, 7) !== monthKey) continue;
+    if (tabOnly && !expense.on_tab) continue;
 
     const shares = (expense.shares ?? []) as Array<{
       id: string;

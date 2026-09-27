@@ -19,8 +19,8 @@ export type ShareStatus =
 
 export type ShareMode = "assigned" | "open";
 
-/** standard = per-spend splits; monthly_tab = running month account cleared at month end */
-export type TrackingMode = "standard" | "monthly_tab";
+/** equal / open = one-off spend; tab = equal split on the group's monthly tab */
+export type SpendType = "equal" | "open" | "tab";
 
 export type ClaimStatus = "pending" | "approved" | "rejected";
 
@@ -76,6 +76,8 @@ export type Expense = {
   billUrls: string[];
   /** assigned = equal split; open = members declare own shares for approval */
   shareMode: ShareMode;
+  /** On the group's single monthly tab: whole group, equal split, cleared at month end */
+  onTab: boolean;
   shares: Share[];
   createdAt: string;
 };
@@ -85,7 +87,6 @@ export type GroupSummary = {
   name: string;
   inviteCode: string;
   currency: string;
-  trackingMode: TrackingMode;
   createdBy: string;
 };
 
@@ -94,7 +95,6 @@ export type LedgerState = {
   groupName: string;
   inviteCode: string;
   currency: string;
-  trackingMode: TrackingMode;
   createdBy: string;
   currentUserRole: "owner" | "member";
   people: Person[];

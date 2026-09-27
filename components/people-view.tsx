@@ -31,7 +31,6 @@ export function PeopleView() {
     regenerateInviteCode,
     sendInviteEmail,
     deleteGroup,
-    updateTrackingMode,
   } = useLedger();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -40,15 +39,11 @@ export function PeopleView() {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [savingMode, setSavingMode] = useState(false);
-  const [modeStatus, setModeStatus] = useState("");
   const me = state.people.find((person) => person.id === state.currentUserId);
   const [upiId, setUpiId] = useState(me?.upiId ?? "");
   const [phone, setPhone] = useState(me?.phone ?? "");
   const [savingContact, setSavingContact] = useState(false);
   const [contactStatus, setContactStatus] = useState("");
-  const isMonthlyTab = state.trackingMode === "monthly_tab";
-
   useEffect(() => {
     setUpiId(me?.upiId ?? "");
     setPhone(me?.phone ?? "");
@@ -57,7 +52,6 @@ export function PeopleView() {
   const canDelete =
     state.currentUserRole === "owner" ||
     state.createdBy === state.currentUserId;
-  const canEditMode = canDelete;
 
   async function copyLink() {
     await navigator.clipboard.writeText(inviteLink);
@@ -123,9 +117,8 @@ export function PeopleView() {
       <div>
         <h1 className="font-heading text-3xl tracking-tight">People</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {isMonthlyTab
-            ? "Invite a partner or friend, add your UPI or phone, keep logging spends through the month. Clear the tab from Home before month end."
-            : "Invite a friend, add your UPI or phone, keep logging spends. Settle from Home before the month ends."}
+          Invite a friend, add your UPI or phone, keep logging spends. Settle
+          or clear the monthly tab from Home before the month ends.
         </p>
       </div>
 
@@ -136,90 +129,10 @@ export function PeopleView() {
         </p>
         <p>
           After you send the money, tap Claim paid on the spend, or use{" "}
-          {isMonthlyTab ? "Clear month" : "Settle this month"} on Home. It only
+          Settle this month or Clear tab on Home. It only
           counts once the creator approves.
         </p>
       </FlowTip>
-
-      {canEditMode ? (
-        <Card>
-          <CardContent className="space-y-3 pt-4">
-            <div>
-              <p className="text-sm font-medium">Tracking style</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Monthly tab is a running account you clear at month end.
-                Standard keeps equal-split and open-share per spend.
-              </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                disabled={savingMode}
-                onClick={async () => {
-                  setModeStatus("");
-                  setError("");
-                  setSavingMode(true);
-                  const result = await updateTrackingMode("monthly_tab");
-                  setSavingMode(false);
-                  if (result) {
-                    setError(result);
-                    return;
-                  }
-                  setModeStatus("Switched to monthly tab");
-                }}
-                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                  isMonthlyTab
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <span className="font-medium text-foreground">Monthly tab</span>
-                <span className="mt-0.5 block text-xs">
-                  Log spends, equal split, clear by month end
-                </span>
-              </button>
-              <button
-                type="button"
-                disabled={savingMode}
-                onClick={async () => {
-                  setModeStatus("");
-                  setError("");
-                  setSavingMode(true);
-                  const result = await updateTrackingMode("standard");
-                  setSavingMode(false);
-                  if (result) {
-                    setError(result);
-                    return;
-                  }
-                  setModeStatus("Switched to standard shared group");
-                }}
-                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                  !isMonthlyTab
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <span className="font-medium text-foreground">
-                  Standard shared
-                </span>
-                <span className="mt-0.5 block text-xs">
-                  Equal split or members add shares per spend
-                </span>
-              </button>
-            </div>
-            {modeStatus ? (
-              <p className="text-sm text-primary">{modeStatus}</p>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Mode:{" "}
-          <span className="font-medium text-foreground">
-            {isMonthlyTab ? "Monthly tab" : "Standard shared"}
-          </span>
-        </p>
-      )}
 
       <Card>
         <CardContent className="space-y-3 pt-4">

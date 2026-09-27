@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { updatePaymentContact } from "@/lib/actions";
 import { useLedger } from "@/lib/ledger-store";
 import {
   isoDate,
@@ -24,49 +25,81 @@ import {
 } from "@/lib/money";
 import { PersonAvatar } from "@/components/person-avatar";
 import { Spinner } from "@/components/spinner";
-import { currentMonthKey, monthRange } from "@/lib/month";
+import {
+  formatClearBy,
+  formatMonthLabel,
+  monthKeyFromIso,
+  monthRange,
+} from "@/lib/month";
+import type { SpendType } from "@/lib/types";
 
 const MAX_BILLS = 10;
 const MAX_BILL_BYTES = 10 * 1024 * 1024;
 
+const SPEND_TYPES: { value: SpendType; label: string; hint: string }[] = [
+  { value: "equal", label: "Equal split", hint: "Assign everyone's share now" },
+  {
+    value: "open",
+    label: "Members add shares",
+    hint: "Each person declares their amount; you or the owner approve",
+  },
+  {
+    value: "tab",
+    label: "Monthly tab",
+    hint: "Whole group, equal split, clear at month end",
+  },
+];
+
 export function AddExpenseDialog({
   open,
+  initialType = "equal",
   onOpenChange,
 }: {
   open: boolean;
+  initialType?: SpendType;
   onOpenChange: (open: boolean) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {open ? <AddExpenseForm onClose={() => onOpenChange(false)} /> : null}
+      {open ? (
+        <AddExpenseForm
+          initialType={initialType}
+          onClose={() => onOpenChange(false)}
+        />
+      ) : null}
     </Dialog>
   );
 }
 
-function AddExpenseForm({ onClose }: { onClose: () => void }) {
+function AddExpenseForm({
+  initialType,
+  onClose,
+}: {
+  initialType: SpendType;
+  onClose: () => void;
+}) {
   const { state, addExpense, currentUser } = useLedger();
-  const isMonthlyTab = state.trackingMode === "monthly_tab";
-  const monthEnd = monthRange(currentMonthKey()).end;
 
+  const [spendType, setSpendType] = useState<SpendType>(initialType);
+  const [upiId, setUpiId] = useState(currentUser?.upiId ?? "");
+  const [phone, setPhone] = useState(currentUser?.phone ?? "");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(isoDate(0));
-  const [dueDate, setDueDate] = useState(
-    isMonthlyTab ? monthEnd : isoDate(7)
-  );
+  const [dueDate, setDueDate] = useState(isoDate(7));
   const [splitWith, setSplitWith] = useState<string[]>(
     state.people.map((p) => p.id)
   );
   const [notes, setNotes] = useState("");
   const [billFiles, setBillFiles] = useState<File[]>([]);
-  const [shareMode, setShareMode] = useState<"assigned" | "open">("assigned");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const effectiveShareMode = isMonthlyTab ? "assigned" : shareMode;
-  const effectiveSplitWith = isMonthlyTab
-    ? state.people.map((p) => p.id)
-    : splitWith;
+  const isTab = spendType === "tab";
+  const shareMode = spendType === "open" ? "open" : "assigned";
+  const tabMonth = monthKeyFromIso(date || isoDate(0));
+  const effectiveShareMode = shareMode;
+  const effectiveSplitWith = isTab ? state.people.map((p) => p.id) : splitWith;
 
   const preview = useMemo(() => {
     if (effectiveShareMode === "open") return null;
@@ -119,7 +152,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
     const amountCents = parseMoneyToCents(amount);
     if (!title.trim()) {
       setError(
-        isMonthlyTab
+        isTab
           ? "Name this spend (e.g. groceries, dinner)."
           : "Name this spend (e.g. Saturday party)."
       );
@@ -135,15 +168,31 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
     }
     setSaving(true);
     setError("");
+    const contactChanged =
+      upiId.trim() !== (currentUser?.upiId ?? "") ||
+      phone.trim() !== (currentUser?.phone ?? "");
+    if (contactChanged) {
+      const formData = new FormData();
+      formData.set("group_id", state.groupId);
+      formData.set("upi_id", upiId);
+      formData.set("phone", phone);
+      const result = await updatePaymentContact(formData);
+      if (result.error) {
+        setSaving(false);
+        setError(result.error);
+        return;
+      }
+    }
     const err = await addExpense({
       title,
       amountCents,
       date,
-      dueDate: isMonthlyTab ? monthEnd : dueDate,
+      dueDate: isTab ? monthRange(tabMonth).end : dueDate,
       notes,
       splitWith: effectiveSplitWith,
       billFiles,
       shareMode: effectiveShareMode,
+      onTab: isTab,
     });
     setSaving(false);
     if (err) {
@@ -156,67 +205,83 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   return (
     <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>{isMonthlyTab ? "Add spend" : "New spend"}</DialogTitle>
+        <DialogTitle>{isTab ? "Add to monthly tab" : "New spend"}</DialogTitle>
         <DialogDescription>
-          {isMonthlyTab
-            ? "You paid, so log it on this month’s tab. Equal split across members is automatic. Clear the tab before month end."
-            : "You paid, so you create the spend and approve paybacks. Choose equal split, or let each member submit their own share for you (or the group owner) to approve. Attach bills or receipts if you have them."}
+          You paid, so you create the spend and approve paybacks. Split it now,
+          let members add their own shares, or put it on the group&apos;s
+          monthly tab. Attach bills or receipts if you have them.
         </DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-3">
-        <p className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-          Receiver / approver:{" "}
-          <span className="font-medium text-foreground">
-            {currentUser?.name ?? "You"}
-          </span>{" "}
-          (whoever creates the spend). Friends pay you via the UPI ID or phone
-          on your People profile.
-        </p>
+        <div className="grid gap-2 rounded-lg border border-border p-3">
+          <div>
+            <Label>Your payment info</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Friends pay{" "}
+              <span className="font-medium text-foreground">
+                {currentUser?.name ?? "you"}
+              </span>{" "}
+              back here. Changes are saved to your profile.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-1">
+              <Label htmlFor="spend-upi" className="text-xs font-normal">
+                UPI ID
+              </Label>
+              <Input
+                id="spend-upi"
+                value={upiId}
+                onChange={(event) => setUpiId(event.target.value)}
+                placeholder="name@okaxis"
+                autoComplete="off"
+              />
+            </div>
+            <div className="grid gap-1">
+              <Label htmlFor="spend-phone" className="text-xs font-normal">
+                Phone
+              </Label>
+              <Input
+                id="spend-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="+91…"
+                autoComplete="tel"
+              />
+            </div>
+          </div>
+          {!upiId.trim() && !phone.trim() ? (
+            <p className="text-xs text-muted-foreground">
+              Add at least one so people know where to send your share.
+            </p>
+          ) : null}
+        </div>
 
-        {!isMonthlyTab ? (
-          <div className="grid gap-2 rounded-lg border border-border p-3">
-            <Label>How should shares work?</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 rounded-lg border border-border p-3">
+          <Label>How should this be shared?</Label>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {SPEND_TYPES.map((option) => (
               <button
+                key={option.value}
                 type="button"
-                onClick={() => setShareMode("assigned")}
+                onClick={() => setSpendType(option.value)}
+                aria-pressed={spendType === option.value}
                 className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                  shareMode === "assigned"
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <span className="font-medium text-foreground">Equal split</span>
-                <span className="mt-0.5 block text-xs">
-                  Assign everyone&apos;s share now
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShareMode("open")}
-                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                  shareMode === "open"
+                  spendType === option.value
                     ? "border-primary bg-primary/5 text-foreground"
                     : "border-border text-muted-foreground hover:bg-muted/50"
                 }`}
               >
                 <span className="font-medium text-foreground">
-                  Members add shares
+                  {option.label}
                 </span>
-                <span className="mt-0.5 block text-xs">
-                  Each person declares their amount; you or the group owner
-                  approve
-                </span>
+                <span className="mt-0.5 block text-xs">{option.hint}</span>
               </button>
-            </div>
+            ))}
           </div>
-        ) : (
-          <p className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-            Monthly tab: everyone in the group shares equally. No need to pick
-            share mode or declare amounts per person.
-          </p>
-        )}
+        </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor="title">What was it?</Label>
@@ -250,7 +315,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {!isMonthlyTab ? (
+        {!isTab ? (
           <div className="grid gap-1.5">
             <Label htmlFor="due">Pay-back due</Label>
             <Input
@@ -262,7 +327,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           </div>
         ) : null}
 
-        {!isMonthlyTab ? (
+        {!isTab ? (
           <div className="grid gap-2">
             <Label>
               {shareMode === "open" ? "Who is on this bill?" : "Split with"}
@@ -291,13 +356,14 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
           </div>
         ) : null}
 
-        {isMonthlyTab ? (
+        {isTab ? (
           <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-            Equal split across{" "}
+            Goes on the group&apos;s {formatMonthLabel(tabMonth)} tab, split
+            equally across{" "}
             {state.people.length === 1
               ? "you (invite a partner or friend to share the tab)"
-              : `${state.people.length} members`}
-            . Paybacks are due when you clear the month.
+              : `all ${state.people.length} members`}
+            . {formatClearBy(tabMonth)}, when paybacks are due.
           </div>
         ) : shareMode === "open" ? (
           <div className="rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground space-y-1">
@@ -395,7 +461,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
               <Spinner className="text-primary-foreground" />
               Saving…
             </>
-          ) : isMonthlyTab ? (
+          ) : isTab ? (
             "Add to tab"
           ) : (
             "Create spend"

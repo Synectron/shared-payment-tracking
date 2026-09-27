@@ -23,7 +23,6 @@ import {
   regenerateInviteCode as regenerateInviteCodeAction,
   sendGroupInviteEmail as sendGroupInviteEmailAction,
   deleteGroup as deleteGroupAction,
-  updateGroupTrackingMode as updateGroupTrackingModeAction,
 } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -37,7 +36,6 @@ import type {
   RepayMethod,
   ShareMode,
   SourceKind,
-  TrackingMode,
 } from "@/lib/types";
 
 type AddExpenseInput = {
@@ -49,6 +47,7 @@ type AddExpenseInput = {
   splitWith: string[];
   billFiles?: File[];
   shareMode?: ShareMode;
+  onTab?: boolean;
 };
 
 type ClaimPaidInput = {
@@ -86,12 +85,12 @@ type LedgerContextValue = {
   settleWith: (
     otherId: string,
     method: RepayMethod,
-    monthKey?: string
+    monthKey?: string,
+    tabOnly?: boolean
   ) => Promise<number>;
   regenerateInviteCode: () => Promise<string | null>;
   sendInviteEmail: (email: string) => Promise<string | null>;
   deleteGroup: () => Promise<string | null>;
-  updateTrackingMode: (mode: TrackingMode) => Promise<string | null>;
 };
 
 const LedgerContext = createContext<LedgerContextValue | null>(null);
@@ -172,6 +171,7 @@ export function LedgerProvider({
         splitWith: input.splitWith,
         billPaths,
         shareMode: input.shareMode,
+        onTab: input.onTab,
       });
       if (result?.error) return result.error;
       refresh();
@@ -260,12 +260,18 @@ export function LedgerProvider({
   );
 
   const settleWith = useCallback(
-    async (otherId: string, method: RepayMethod, monthKey?: string) => {
+    async (
+      otherId: string,
+      method: RepayMethod,
+      monthKey?: string,
+      tabOnly?: boolean
+    ) => {
       const result = await claimSettleAction(
         state.groupId,
         otherId,
         method,
-        monthKey
+        monthKey,
+        tabOnly
       );
       refresh();
       return result.count ?? 0;
@@ -301,17 +307,6 @@ export function LedgerProvider({
     return null;
   }, [state.groupId]);
 
-  const updateTrackingMode = useCallback(
-    async (mode: TrackingMode) => {
-      const result = await updateGroupTrackingModeAction(state.groupId, mode);
-      if (result?.error) return result.error;
-      setState((current) => ({ ...current, trackingMode: mode }));
-      refresh();
-      return null;
-    },
-    [state.groupId, refresh]
-  );
-
   const value = useMemo<LedgerContextValue>(() => {
     const currentUser = state.people.find(
       (person) => person.id === state.currentUserId
@@ -337,7 +332,6 @@ export function LedgerProvider({
       regenerateInviteCode,
       sendInviteEmail,
       deleteGroup,
-      updateTrackingMode,
     };
   }, [
     state,
@@ -355,7 +349,6 @@ export function LedgerProvider({
     regenerateInviteCode,
     sendInviteEmail,
     deleteGroup,
-    updateTrackingMode,
   ]);
 
   return (

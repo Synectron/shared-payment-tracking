@@ -148,6 +148,11 @@ export function ExpenseCard({
               {payer.name} created · approves paybacks
             </span>
           )}
+          {expense.onTab && (
+            <span className="rounded-full bg-primary/10 px-2 py-1 font-medium text-primary">
+              Monthly tab
+            </span>
+          )}
           {isOpenBill && (
             <span className="rounded-full bg-muted px-2 py-1">
               Members declare shares

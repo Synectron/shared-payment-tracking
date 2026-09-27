@@ -162,6 +162,27 @@ export function monthBalancesForPerson(
   return balancesForPerson(ledgerForMonth(state, monthKey), personId);
 }
 
+/** The group's monthly tab for one month: on-tab spends dated in that month. */
+export function ledgerForTab(
+  state: LedgerState,
+  monthKey: MonthKey
+): LedgerState {
+  return {
+    ...state,
+    expenses: state.expenses.filter(
+      (expense) => expense.onTab && expenseInMonth(expense, monthKey)
+    ),
+  };
+}
+
+export function tabBalancesForPerson(
+  state: LedgerState,
+  monthKey: MonthKey,
+  personId: string
+) {
+  return balancesForPerson(ledgerForTab(state, monthKey), personId);
+}
+
 export function sourceSpend(state: LedgerState, sourceId: string): number {
   return state.expenses
     .filter(
