@@ -45,8 +45,6 @@ type AddExpenseInput = {
   amountCents: number;
   date: string;
   dueDate: string;
-  sourceId: string;
-  chargedToSourceId?: string;
   notes?: string;
   splitWith: string[];
   billFile?: File | null;
@@ -159,8 +157,6 @@ export function LedgerProvider({
         amountCents: input.amountCents,
         date: input.date,
         dueDate: input.dueDate,
-        sourceId: input.sourceId,
-        chargedToSourceId: input.chargedToSourceId,
         notes: input.notes,
         splitWith: input.splitWith,
         billPath,

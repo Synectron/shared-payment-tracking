@@ -395,8 +395,6 @@ export async function addExpense(
     date: string;
     dueDate: string;
     usedById?: string;
-    sourceId: string;
-    chargedToSourceId?: string;
     notes?: string;
     splitWith: string[];
     billPath?: string;
@@ -444,8 +442,6 @@ export async function addExpense(
       paid_by_id: paidById,
       created_by: paidById,
       used_by_id: input.usedById ?? paidById,
-      source_id: input.sourceId,
-      charged_to_source_id: input.chargedToSourceId ?? null,
       notes: input.notes?.trim() || null,
       bill_path: input.billPath ?? null,
       share_mode: shareMode,

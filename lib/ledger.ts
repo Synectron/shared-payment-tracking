@@ -31,8 +31,9 @@ export function personById(people: Person[], id: string): Person | undefined {
 
 export function sourceById(
   sources: PaymentSource[],
-  id: string
+  id: string | undefined
 ): PaymentSource | undefined {
+  if (!id) return undefined;
   return sources.find((source) => source.id === id);
 }
 
@@ -187,9 +188,10 @@ export function nudgeText(
 ): string {
   const debtor = personById(people, share.personId)?.name ?? "Friend";
   const creditor = personById(people, expense.paidById)?.name ?? "them";
-  const source = sourceById(sources, expense.sourceId)?.name ?? "a shared card";
+  const source = sourceById(sources, expense.sourceId)?.name;
   const amount = `$${(share.amountCents / 100).toFixed(2)}`;
-  return `Hey ${debtor}: ${amount} for ${expense.title} is still unpaid. It went on ${source} and is owed to ${creditor}. Due ${expense.dueDate}.`;
+  const wentOn = source ? ` It went on ${source}.` : "";
+  return `Hey ${debtor}: ${amount} for ${expense.title} is still unpaid.${wentOn} It's owed to ${creditor}. Due ${expense.dueDate}.`;
 }
 
 function pairKey(fromId: string, toId: string): string {

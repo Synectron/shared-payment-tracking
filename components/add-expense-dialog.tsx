@@ -13,15 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useLedger } from "@/lib/ledger-store";
 import {
@@ -30,7 +21,6 @@ import {
   splitEvenly,
   formatMoney,
 } from "@/lib/money";
-import { sourceById } from "@/lib/ledger";
 import { PersonAvatar } from "@/components/person-avatar";
 import { Spinner } from "@/components/spinner";
 import { currentMonthKey, monthRange } from "@/lib/month";
@@ -52,9 +42,6 @@ export function AddExpenseDialog({
 function AddExpenseForm({ onClose }: { onClose: () => void }) {
   const { state, addExpense, currentUser } = useLedger();
   const isMonthlyTab = state.trackingMode === "monthly_tab";
-  const cards = state.sources.filter((source) => source.kind === "card");
-  const upis = state.sources.filter((source) => source.kind === "upi");
-  const utilities = state.sources.filter((source) => source.kind === "utility");
   const monthEnd = monthRange(currentMonthKey()).end;
 
   const [title, setTitle] = useState("");
@@ -62,10 +49,6 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   const [date, setDate] = useState(isoDate(0));
   const [dueDate, setDueDate] = useState(
     isMonthlyTab ? monthEnd : isoDate(7)
-  );
-  const [sourceId, setSourceId] = useState(cards[0]?.id ?? upis[0]?.id ?? "");
-  const [chargedToSourceId, setChargedToSourceId] = useState(
-    cards[0]?.id ?? upis[0]?.id ?? ""
   );
   const [splitWith, setSplitWith] = useState<string[]>(
     state.people.map((p) => p.id)
@@ -76,8 +59,6 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const selectedSource = sourceById(state.sources, sourceId);
-  const isUtility = selectedSource?.kind === "utility";
   const effectiveShareMode = isMonthlyTab ? "assigned" : shareMode;
   const effectiveSplitWith = isMonthlyTab
     ? state.people.map((p) => p.id)
@@ -118,10 +99,6 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       setError("Enter an amount.");
       return;
     }
-    if (!sourceId) {
-      setError("Pick a card, UPI, or utility.");
-      return;
-    }
     if (effectiveSplitWith.length === 0) {
       setError("Include at least yourself in the split.");
       return;
@@ -133,8 +110,6 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       amountCents,
       date,
       dueDate: isMonthlyTab ? monthEnd : dueDate,
-      sourceId,
-      chargedToSourceId: isUtility ? chargedToSourceId || undefined : undefined,
       notes,
       splitWith: effectiveSplitWith,
       billFile,
@@ -244,65 +219,6 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
             />
           </div>
         </div>
-
-        <div className="grid gap-1.5">
-          <Label>Paid from</Label>
-          <Select value={sourceId} onValueChange={setSourceId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Card / UPI / utility" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Cards</SelectLabel>
-                {cards.map((source) => (
-                  <SelectItem key={source.id} value={source.id}>
-                    {source.name}
-                    {source.last4 ? ` · ${source.last4}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectGroup>
-                <SelectLabel>UPI</SelectLabel>
-                {upis.map((source) => (
-                  <SelectItem key={source.id} value={source.id}>
-                    {source.name}
-                    {source.provider ? ` · ${source.provider}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectGroup>
-                <SelectLabel>Utilities</SelectLabel>
-                {utilities.map((source) => (
-                  <SelectItem key={source.id} value={source.id}>
-                    {source.name}
-                    {source.provider ? ` · ${source.provider}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {isUtility && (
-          <div className="grid gap-1.5">
-            <Label>Which card paid this bill?</Label>
-            <Select
-              value={chargedToSourceId}
-              onValueChange={setChargedToSourceId}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Card that was charged" />
-              </SelectTrigger>
-              <SelectContent>
-                {cards.map((source) => (
-                  <SelectItem key={source.id} value={source.id}>
-                    {source.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         {!isMonthlyTab ? (
           <div className="grid gap-1.5">

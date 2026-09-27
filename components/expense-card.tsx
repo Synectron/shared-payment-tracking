@@ -135,12 +135,14 @@ export function ExpenseCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-foreground">
-            <CreditCardIcon className="size-3" />
-            {source?.name ?? "Unknown source"}
-            {source?.last4 ? ` · ${source.last4}` : ""}
-            {source?.provider ? ` · ${source.provider}` : ""}
-          </span>
+          {source && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-foreground">
+              <CreditCardIcon className="size-3" />
+              {source.name}
+              {source.last4 ? ` · ${source.last4}` : ""}
+              {source.provider ? ` · ${source.provider}` : ""}
+            </span>
+          )}
           {payer && (
             <span className="rounded-full bg-muted px-2 py-1">
               {payer.name} created · approves paybacks

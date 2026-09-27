@@ -148,7 +148,7 @@ export const loadGroupLedger = cache(
         dueDate: e.due_date,
         paidById: e.paid_by_id,
         usedById: e.used_by_id,
-        sourceId: e.source_id,
+        sourceId: e.source_id ?? undefined,
         chargedToSourceId: e.charged_to_source_id ?? undefined,
         notes: e.notes ?? undefined,
         billPath,

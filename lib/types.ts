@@ -69,7 +69,7 @@ export type Expense = {
   /** Person who created the spend — always the receiver / approver */
   paidById: string;
   usedById: string;
-  sourceId: string;
+  sourceId?: string;
   chargedToSourceId?: string;
   notes?: string;
   billPath?: string;

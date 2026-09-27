@@ -38,7 +38,7 @@ export function MarkPaidDialog({
   const share = expense?.shares.find((item) => item.personId === target?.personId);
   const debtor = personById(state.people, target?.personId ?? "");
   const creditor = personById(state.people, expense?.paidById ?? "");
-  const source = sourceById(state.sources, expense?.sourceId ?? "");
+  const source = sourceById(state.sources, expense?.sourceId);
   const isReceiver = currentUser?.id === expense?.paidById;
   const isPendingClaim = share?.status === "pending";
 
