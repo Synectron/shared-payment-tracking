@@ -6,10 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { RepayMethod, SourceKind } from "@/lib/types";
 import {
+  confirmSignupEmailHtml,
+  confirmSignupEmailText,
   groupInviteEmailHtml,
   groupInviteEmailText,
   magicLinkEmailHtml,
   magicLinkEmailText,
+  resetPasswordEmailHtml,
+  resetPasswordEmailText,
   sendEmail,
 } from "@/lib/email";
 import { DEFAULT_CURRENCY, isSupportedCurrency } from "@/lib/money";
@@ -112,10 +116,199 @@ export async function signOut() {
   redirect("/login");
 }
 
+const MIN_PASSWORD_LENGTH = 8;
+
+function safeNext(value: FormDataEntryValue | null) {
+  const next = String(value ?? "/");
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
+function authCallbackLink(hashedToken: string, type: string, next: string) {
+  return `${siteOrigin()}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=${type}&next=${encodeURIComponent(next)}`;
+}
+
+function canSendOwnAuthEmail() {
+  return Boolean(
+    process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.RESEND_API_KEY
+  );
+}
+
+export async function signInWithPassword(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  if (!email || !password) return { error: "Enter your email and password." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (/confirm/i.test(error.message)) {
+      return { error: "Confirm your email first. Check your inbox for the link." };
+    }
+    return {
+      error:
+        "Wrong email or password. Signed in with email links before? Use Forgot password to set one.",
+    };
+  }
+  await ensureProfile();
+  return { ok: true as const, next: safeNext(formData.get("next")) };
+}
+
+export async function signUpWithPassword(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const displayName = String(formData.get("name") ?? "").trim();
+  const next = safeNext(formData.get("next"));
+  if (!email) return { error: "Enter your email." };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return {
+      error: `Use a password with at least ${MIN_PASSWORD_LENGTH} characters.`,
+    };
+  }
+  const userData = displayName ? { display_name: displayName } : undefined;
+  const alreadyRegistered =
+    "That email already has an account. Sign in, or use Forgot password.";
+
+  if (canSendOwnAuthEmail()) {
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin.auth.admin.generateLink({
+        type: "signup",
+        email,
+        password,
+        options: {
+          data: userData,
+          redirectTo: `${siteOrigin()}/auth/confirm?next=${encodeURIComponent(next)}`,
+        },
+      });
+      if (error) {
+        return {
+          error: /already|registered|exists/i.test(error.message)
+            ? alreadyRegistered
+            : error.message,
+        };
+      }
+      const hashedToken = data.properties?.hashed_token;
+      if (!hashedToken) return { error: "Could not create a confirmation link." };
+
+      const mailed = await sendEmail({
+        to: email,
+        subject: "Confirm your Settora account",
+        html: confirmSignupEmailHtml(authCallbackLink(hashedToken, "signup", next)),
+        text: confirmSignupEmailText(),
+      });
+      if (mailed.error) return { error: mailed.error };
+      return { ok: true as const, confirmEmail: true as const };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: userData,
+      emailRedirectTo: `${siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+  if (error) {
+    return {
+      error: /already|registered|exists/i.test(error.message)
+        ? alreadyRegistered
+        : error.message,
+    };
+  }
+  if (data.session) {
+    await ensureProfile();
+    return { ok: true as const, next };
+  }
+  return { ok: true as const, confirmEmail: true as const };
+}
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) return { error: "Enter your email." };
+  const next = "/auth/reset";
+
+  if (canSendOwnAuthEmail()) {
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+      });
+      // Same response whether or not the account exists
+      const hashedToken = data?.properties?.hashed_token;
+      if (error || !hashedToken) return { ok: true as const };
+
+      const mailed = await sendEmail({
+        to: email,
+        subject: "Set your Settora password",
+        html: resetPasswordEmailHtml(authCallbackLink(hashedToken, "recovery", next)),
+        text: resetPasswordEmailText(),
+      });
+      if (mailed.error) return { error: mailed.error };
+      return { ok: true as const };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+  });
+  return { ok: true as const };
+}
+
+export async function updatePassword(formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return {
+      error: `Use a password with at least ${MIN_PASSWORD_LENGTH} characters.`,
+    };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      error: "You're signed out. Sign in again, or request a new reset link.",
+    };
+  }
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+  return { ok: true as const };
+}
+
 function normalizePaymentContact(formData: FormData) {
   const upiId = String(formData.get("upi_id") ?? "").trim() || null;
   const phone = String(formData.get("phone") ?? "").trim() || null;
   return { upiId, phone };
+}
+
+export async function updateProfile(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  if (!name) return { error: "Enter your name." };
+  const { upiId, phone } = normalizePaymentContact(formData);
+  const { supabase, user } = await requireUser();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ display_name: name, upi_id: upiId, phone })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+export async function signOutEverywhere() {
+  const supabase = await createClient();
+  await supabase.auth.signOut({ scope: "global" });
+  redirect("/login");
 }
 
 export async function updatePaymentContact(formData: FormData) {

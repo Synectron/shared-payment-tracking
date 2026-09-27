@@ -16,15 +16,13 @@ import { Label } from "@/components/ui/label";
 import { FlowTip } from "@/components/flow-tip";
 import { PersonAvatar } from "@/components/person-avatar";
 import { Spinner } from "@/components/spinner";
-import { updatePaymentContact } from "@/lib/actions";
 import { balancesForPerson } from "@/lib/ledger";
 import { useLedger } from "@/lib/ledger-store";
 import { formatMoney } from "@/lib/money";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useState } from "react";
 
 export function PeopleView() {
-  const router = useRouter();
   const {
     state,
     inviteLink,
@@ -40,14 +38,6 @@ export function PeopleView() {
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const me = state.people.find((person) => person.id === state.currentUserId);
-  const [upiId, setUpiId] = useState(me?.upiId ?? "");
-  const [phone, setPhone] = useState(me?.phone ?? "");
-  const [savingContact, setSavingContact] = useState(false);
-  const [contactStatus, setContactStatus] = useState("");
-  useEffect(() => {
-    setUpiId(me?.upiId ?? "");
-    setPhone(me?.phone ?? "");
-  }, [me?.upiId, me?.phone]);
 
   const canDelete =
     state.currentUserRole === "owner" ||
@@ -89,27 +79,6 @@ export function PeopleView() {
       setError(result);
       setDeleteOpen(false);
     }
-  }
-
-  async function onSavePaymentContact(e: React.FormEvent) {
-    e.preventDefault();
-    setContactStatus("");
-    setError("");
-    setSavingContact(true);
-    const formData = new FormData();
-    formData.set("group_id", state.groupId);
-    formData.set("upi_id", upiId);
-    formData.set("phone", phone);
-    const result = await updatePaymentContact(formData);
-    setSavingContact(false);
-    if (result.error) {
-      setContactStatus("");
-      setError(result.error);
-      return;
-    }
-    setError("");
-    setContactStatus("Payment details saved");
-    router.refresh();
   }
 
   return (
@@ -199,49 +168,24 @@ export function PeopleView() {
               spend for you to approve.
             </p>
           </div>
-          <form onSubmit={onSavePaymentContact} className="space-y-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="my-upi">UPI ID</Label>
-              <Input
-                id="my-upi"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                placeholder="name@okaxis"
-                autoComplete="off"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="my-phone">Phone</Label>
-              <Input
-                id="my-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91…"
-                autoComplete="tel"
-              />
-            </div>
-            <Button type="submit" size="sm" disabled={savingContact}>
-              {savingContact ? (
-                <>
-                  <Spinner className="text-primary-foreground" />
-                  Saving…
-                </>
-              ) : (
-                "Save payment details"
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Tip: fill at least one field. Without it, friends have to ask you
-              how to pay.
-            </p>
-            {contactStatus ? (
-              <p className="text-sm text-primary">{contactStatus}</p>
-            ) : null}
-            {error && !inviteStatus ? (
-              <p className="text-sm text-destructive">{error}</p>
-            ) : null}
-          </form>
+          <p className="text-sm">
+            {me?.upiId || me?.phone ? (
+              <>
+                {me.upiId ? <span className="font-mono">{me.upiId}</span> : null}
+                {me.upiId && me.phone ? " · " : null}
+                {me.phone ?? null}
+              </>
+            ) : (
+              <span className="text-muted-foreground">
+                Not set yet. Friends will have to ask you how to pay.
+              </span>
+            )}
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/g/${state.groupId}/profile`}>
+              Edit in Profile
+            </Link>
+          </Button>
         </CardContent>
       </Card>
 
@@ -293,7 +237,7 @@ export function PeopleView() {
                     ) : (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {person.id === state.currentUserId
-                          ? "Add your UPI or phone above"
+                          ? "Add your UPI or phone in Profile"
                           : "No payment contact yet · ask them to add one"}
                       </p>
                     )}

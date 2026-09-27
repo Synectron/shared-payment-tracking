@@ -9,6 +9,7 @@ import {
   LayoutDashboardIcon,
   PlusIcon,
   ReceiptIcon,
+  UserRoundIcon,
   UsersIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function AppShell({
       `/g/${groupId}/expenses`,
       `/g/${groupId}/cards`,
       `/g/${groupId}/people`,
+      `/g/${groupId}/profile`,
     ]) {
       router.prefetch(href);
     }
@@ -64,6 +66,7 @@ export function AppShell({
     },
     { href: `/g/${groupId}/cards`, label: "Sources", icon: CreditCardIcon },
     { href: `/g/${groupId}/people`, label: "People", icon: UsersIcon },
+    { href: `/g/${groupId}/profile`, label: "Profile", icon: UserRoundIcon },
   ];
 
   const tabNavigating = pendingHref != null && pendingHref !== pathname;
@@ -179,7 +182,7 @@ export function AppShell({
       <SiteFooter className="pb-20 md:pb-0" />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        <div className="grid grid-cols-5 px-1 py-1">
+        <div className="grid grid-cols-6 px-1 py-1">
           {nav.map((item) => {
             const active = item.exact
               ? pathname === item.href

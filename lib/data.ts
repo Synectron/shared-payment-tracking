@@ -20,6 +20,30 @@ export const getCurrentUser = cache(async () => {
   return user;
 });
 
+export type MyProfile = {
+  name: string;
+  email: string;
+  upiId: string;
+  phone: string;
+};
+
+export const getMyProfile = cache(async (): Promise<MyProfile | null> => {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("display_name, email, upi_id, phone")
+    .eq("id", user.id)
+    .maybeSingle();
+  return {
+    name: data?.display_name ?? "",
+    email: data?.email || user.email || "",
+    upiId: data?.upi_id ?? "",
+    phone: data?.phone ?? "",
+  };
+});
+
 export const listMyGroups = cache(async (): Promise<GroupSummary[]> => {
   const supabase = await createClient();
   const user = await getCurrentUser();

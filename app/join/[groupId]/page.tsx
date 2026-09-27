@@ -7,9 +7,10 @@ import { JoinButton } from "@/components/join-button";
 export default async function LegacyJoinPage({
   params,
 }: {
-  params: Promise<{ code: string }>;
+  // Shares the segment name with /join/[groupId]/[code]; here it holds the invite code
+  params: Promise<{ groupId: string }>;
 }) {
-  const { code } = await params;
+  const { groupId: code } = await params;
   const supabase = await createClient();
   const {
     data: { user },

@@ -98,6 +98,58 @@ export function magicLinkEmailText() {
   ].join("\n");
 }
 
+export function confirmSignupEmailHtml(link: string) {
+  return emailShell(`
+<tr>
+  <td style="padding-bottom:8px;font-size:16px;text-align:center;">
+    Confirm your email to finish creating your <strong>Settora</strong> account.
+  </td>
+</tr>
+${ctaButton(link, "Confirm email")}
+<tr>
+  <td style="font-size:12px;color:#666;text-align:center;">
+    This link works once and expires soon. Didn't sign up? Safe to ignore.
+  </td>
+</tr>
+  `);
+}
+
+export function confirmSignupEmailText() {
+  return [
+    "Confirm your Settora account",
+    "",
+    "Open this message in an email app that shows HTML, then tap \"Confirm email\".",
+    "",
+    "Didn't sign up? Safe to ignore.",
+  ].join("\n");
+}
+
+export function resetPasswordEmailHtml(link: string) {
+  return emailShell(`
+<tr>
+  <td style="padding-bottom:8px;font-size:16px;text-align:center;">
+    Set a new password for your <strong>Settora</strong> account.
+  </td>
+</tr>
+${ctaButton(link, "Set password")}
+<tr>
+  <td style="font-size:12px;color:#666;text-align:center;">
+    This link works once and expires soon. Didn't ask for this? Safe to ignore.
+  </td>
+</tr>
+  `);
+}
+
+export function resetPasswordEmailText() {
+  return [
+    "Set your Settora password",
+    "",
+    "Open this message in an email app that shows HTML, then tap \"Set password\".",
+    "",
+    "Didn't ask for this? Safe to ignore.",
+  ].join("\n");
+}
+
 export function groupInviteEmailHtml(input: {
   groupName: string;
   inviteLink: string;
