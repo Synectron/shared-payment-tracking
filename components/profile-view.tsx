@@ -140,12 +140,11 @@ function DetailsCard({ profile }: { profile: MyProfile }) {
 }
 
 function PasswordCard() {
-  const [status, setStatus] = useState("");
+  const router = useRouter();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function onSubmit(formData: FormData) {
-    setStatus("");
     setError("");
     if (formData.get("password") !== formData.get("confirm")) {
       setError("Passwords don't match.");
@@ -153,12 +152,13 @@ function PasswordCard() {
     }
     setSaving(true);
     const result = await updatePassword(formData);
-    setSaving(false);
     if (result.error) {
+      setSaving(false);
       setError(result.error);
       return;
     }
-    setStatus("Password saved. Use it with your email next time you sign in.");
+    router.replace("/login?password=updated");
+    router.refresh();
   }
 
   return (
@@ -169,6 +169,7 @@ function PasswordCard() {
           <p className="mt-0.5 text-xs text-muted-foreground">
             Set or change the password you sign in with. If you&apos;ve only
             used email links so far, this adds a password to your account.
+            You&apos;ll be signed out everywhere and asked to sign in again.
           </p>
         </div>
         <form action={onSubmit} className="space-y-3">
@@ -207,7 +208,6 @@ function PasswordCard() {
               "Save password"
             )}
           </Button>
-          {status ? <p className="text-sm text-primary">{status}</p> : null}
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </form>
       </CardContent>

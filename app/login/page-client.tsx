@@ -63,6 +63,7 @@ export default function LoginPage() {
       : ""
   );
   const [pending, setPending] = useState(false);
+  const passwordUpdated = searchParams.get("password") === "updated";
   const copy = COPY[mode];
 
   function switchMode(nextMode: Mode) {
@@ -130,6 +131,12 @@ export default function LoginPage() {
           </div>
 
           <PwaInstallButton />
+
+          {passwordUpdated && mode === "signin" && !error ? (
+            <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
+              Password updated. Sign in with your email and new password.
+            </p>
+          ) : null}
 
           {mode === "signin" || mode === "signup" ? (
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm">

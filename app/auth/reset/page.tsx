@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
       setError(result.error);
       return;
     }
-    router.replace("/");
+    router.replace("/login?password=updated");
     router.refresh();
   }
 
@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
               Set a new password
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              You&apos;ll use it with your email to sign in from now on.
+              After saving, sign in again with your email and new password.
             </p>
           </div>
           <form action={onSubmit} className="space-y-4">

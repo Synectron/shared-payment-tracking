@@ -280,6 +280,7 @@ export async function updatePassword(formData: FormData) {
   }
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message };
+  await supabase.auth.signOut({ scope: "global" });
   return { ok: true as const };
 }
 
