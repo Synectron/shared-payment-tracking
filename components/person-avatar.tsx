@@ -14,11 +14,10 @@ export function PersonAvatar({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white",
-        size === "sm" ? "size-6 text-[11px]" : "size-8 text-sm",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-primary font-heading font-bold text-primary-foreground",
+        size === "sm" ? "size-6 text-xs" : "size-8 text-base",
         className
       )}
-      style={{ backgroundColor: person?.color ?? "#6B7280" }}
       aria-hidden
     >
       {initial}

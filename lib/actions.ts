@@ -45,7 +45,7 @@ export async function ensureProfile() {
         (user.user_metadata?.display_name as string | undefined) ||
         email.split("@")[0] ||
         "Friend",
-      color: "#0f766e",
+      color: "#1f5c4d",
     });
   }
   return user;
@@ -397,7 +397,7 @@ export async function addExpense(
     usedById?: string;
     notes?: string;
     splitWith: string[];
-    billPath?: string;
+    billPaths?: string[];
     /** assigned = equal split now; open = members declare amounts later */
     shareMode?: "assigned" | "open";
   }
@@ -443,7 +443,7 @@ export async function addExpense(
       created_by: paidById,
       used_by_id: input.usedById ?? paidById,
       notes: input.notes?.trim() || null,
-      bill_path: input.billPath ?? null,
+      bill_paths: input.billPaths ?? [],
       share_mode: shareMode,
     })
     .select("id")

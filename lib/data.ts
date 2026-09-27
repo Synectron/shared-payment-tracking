@@ -136,10 +136,11 @@ export const loadGroupLedger = cache(
     }));
 
     const expenses: Expense[] = (expensesRaw ?? []).map((e) => {
-      const billPath = (e.bill_path as string | null) ?? undefined;
-      const billUrl = billPath
-        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/bills/${billPath}`
-        : undefined;
+      const billPaths = (e.bill_paths as string[] | null) ?? [];
+      const billUrls = billPaths.map(
+        (path) =>
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/bills/${path}`
+      );
       return {
         id: e.id,
         title: e.title,
@@ -151,8 +152,8 @@ export const loadGroupLedger = cache(
         sourceId: e.source_id ?? undefined,
         chargedToSourceId: e.charged_to_source_id ?? undefined,
         notes: e.notes ?? undefined,
-        billPath,
-        billUrl,
+        billPaths,
+        billUrls,
         shareMode: (e.share_mode as Expense["shareMode"]) ?? "assigned",
         createdAt: String(e.created_at).slice(0, 10),
         shares: ((e.shares as Array<Record<string, unknown>>) ?? []).map(

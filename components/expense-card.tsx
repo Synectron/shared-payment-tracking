@@ -158,17 +158,18 @@ export function ExpenseCard({
               Billed to {charged.name}
             </span>
           )}
-          {expense.billUrl && (
+          {expense.billUrls.map((url, index) => (
             <a
-              href={expense.billUrl}
+              key={url}
+              href={url}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-foreground underline-offset-2 hover:underline"
             >
               <PaperclipIcon className="size-3" />
-              View bill
+              {expense.billUrls.length === 1 ? "View bill" : `Bill ${index + 1}`}
             </a>
-          )}
+          ))}
         </div>
 
         {expense.notes && (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -73,9 +74,13 @@ export function AppShell({
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
           <Link href="/" className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground font-heading text-sm">
-              Tw
-            </span>
+            <Image
+              src="/settora-logo.png"
+              alt=""
+              width={32}
+              height={32}
+              className="size-8 rounded-lg"
+            />
             <span className="font-heading text-lg leading-none">Settora</span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">

@@ -72,8 +72,8 @@ export type Expense = {
   sourceId?: string;
   chargedToSourceId?: string;
   notes?: string;
-  billPath?: string;
-  billUrl?: string;
+  billPaths: string[];
+  billUrls: string[];
   /** assigned = equal split; open = members declare own shares for approval */
   shareMode: ShareMode;
   shares: Share[];

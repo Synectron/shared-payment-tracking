@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -24,6 +25,9 @@ import {
 import { PersonAvatar } from "@/components/person-avatar";
 import { Spinner } from "@/components/spinner";
 import { currentMonthKey, monthRange } from "@/lib/month";
+
+const MAX_BILLS = 10;
+const MAX_BILL_BYTES = 10 * 1024 * 1024;
 
 export function AddExpenseDialog({
   open,
@@ -54,7 +58,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
     state.people.map((p) => p.id)
   );
   const [notes, setNotes] = useState("");
-  const [billFile, setBillFile] = useState<File | null>(null);
+  const [billFiles, setBillFiles] = useState<File[]>([]);
   const [shareMode, setShareMode] = useState<"assigned" | "open">("assigned");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -74,6 +78,32 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       amountCents: parts[index],
     }));
   }, [amount, effectiveSplitWith, state.people, effectiveShareMode]);
+
+  function addBillFiles(files: File[]) {
+    const tooBig = files.filter((file) => file.size > MAX_BILL_BYTES);
+    const room = MAX_BILLS - billFiles.length;
+    const accepted = files
+      .filter((file) => file.size <= MAX_BILL_BYTES)
+      .slice(0, room);
+    if (tooBig.length > 0) {
+      setError(
+        `${tooBig.map((f) => f.name).join(", ")} ${
+          tooBig.length === 1 ? "is" : "are"
+        } over 10 MB.`
+      );
+    } else if (files.length > room) {
+      setError(`You can attach up to ${MAX_BILLS} files.`);
+    } else {
+      setError("");
+    }
+    if (accepted.length > 0) {
+      setBillFiles((current) => [...current, ...accepted]);
+    }
+  }
+
+  function removeBillFile(index: number) {
+    setBillFiles((current) => current.filter((_, i) => i !== index));
+  }
 
   function toggleSplit(id: string) {
     if (id === state.currentUserId) return;
@@ -112,7 +142,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
       dueDate: isMonthlyTab ? monthEnd : dueDate,
       notes,
       splitWith: effectiveSplitWith,
-      billFile,
+      billFiles,
       shareMode: effectiveShareMode,
     });
     setSaving(false);
@@ -130,7 +160,7 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
         <DialogDescription>
           {isMonthlyTab
             ? "You paid, so log it on this month’s tab. Equal split across members is automatic. Clear the tab before month end."
-            : "You paid, so you create the spend and approve paybacks. Choose equal split, or let each member submit their own share for you (or the group owner) to approve. Attach the bill if you have it."}
+            : "You paid, so you create the spend and approve paybacks. Choose equal split, or let each member submit their own share for you (or the group owner) to approve. Attach bills or receipts if you have them."}
         </DialogDescription>
       </DialogHeader>
 
@@ -304,18 +334,42 @@ function AddExpenseForm({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="grid gap-1.5">
-          <Label htmlFor="bill">Bill / receipt (optional)</Label>
+          <Label htmlFor="bill">Bills / receipts (optional)</Label>
           <Input
             id="bill"
             type="file"
+            multiple
             accept="image/*,application/pdf"
-            onChange={(event) =>
-              setBillFile(event.target.files?.[0] ?? null)
-            }
+            disabled={billFiles.length >= MAX_BILLS}
+            onChange={(event) => {
+              addBillFiles(Array.from(event.target.files ?? []));
+              event.target.value = "";
+            }}
           />
-          {billFile ? (
-            <p className="text-xs text-muted-foreground">{billFile.name}</p>
-          ) : null}
+          {billFiles.length > 0 ? (
+            <ul className="grid gap-1">
+              {billFiles.map((file, index) => (
+                <li
+                  key={`${file.name}-${file.lastModified}-${index}`}
+                  className="flex items-center justify-between gap-2 rounded-md bg-muted/70 px-2.5 py-1.5 text-xs"
+                >
+                  <span className="truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeBillFile(index)}
+                    className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <XIcon className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Add up to {MAX_BILLS} photos or PDFs, 10 MB each.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-1.5">

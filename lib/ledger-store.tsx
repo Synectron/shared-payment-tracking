@@ -47,7 +47,7 @@ type AddExpenseInput = {
   dueDate: string;
   notes?: string;
   splitWith: string[];
-  billFile?: File | null;
+  billFiles?: File[];
   shareMode?: ShareMode;
 };
 
@@ -137,19 +137,30 @@ export function LedgerProvider({
 
   const addExpense = useCallback(
     async (input: AddExpenseInput) => {
-      let billPath: string | undefined;
-      if (input.billFile) {
-        const supabase = createClient();
-        const ext = input.billFile.name.split(".").pop() || "jpg";
-        const path = `${state.groupId}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("bills")
-          .upload(path, input.billFile, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-        if (uploadError) return uploadError.message;
-        billPath = path;
+      const billFiles = input.billFiles ?? [];
+      const billPaths: string[] = [];
+      if (billFiles.length > 0) {
+        const bucket = createClient().storage.from("bills");
+        const results = await Promise.all(
+          billFiles.map(async (file) => {
+            const ext = file.name.split(".").pop() || "jpg";
+            const path = `${state.groupId}/${crypto.randomUUID()}.${ext}`;
+            const { error } = await bucket.upload(path, file, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+            return { path, error };
+          })
+        );
+        const failed = results.find((result) => result.error);
+        if (failed) {
+          const uploaded = results
+            .filter((result) => !result.error)
+            .map((result) => result.path);
+          if (uploaded.length > 0) await bucket.remove(uploaded);
+          return failed.error!.message;
+        }
+        billPaths.push(...results.map((result) => result.path));
       }
 
       const result = await addExpenseAction(state.groupId, {
@@ -159,7 +170,7 @@ export function LedgerProvider({
         dueDate: input.dueDate,
         notes: input.notes,
         splitWith: input.splitWith,
-        billPath,
+        billPaths,
         shareMode: input.shareMode,
       });
       if (result?.error) return result.error;
